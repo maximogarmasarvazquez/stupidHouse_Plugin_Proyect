@@ -1,190 +1,96 @@
-/*
-  ==============================================================================
-
-    This file contains the basic framework code for a JUCE plugin processor.
-
-  ==============================================================================
-*/
-
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
-//==============================================================================
 StupidHouseAudioProcessor::StupidHouseAudioProcessor()
-#ifndef JucePlugin_PreferredChannelConfigurations
-     : AudioProcessor (BusesProperties()
-                     #if ! JucePlugin_IsMidiEffect
-                      #if ! JucePlugin_IsSynth
-                       .withInput  ("Input",  juce::AudioChannelSet::stereo(), true)
-                      #endif
-                       .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
-                     #endif
-                       )
+    : AudioProcessor(BusesProperties()
+#if ! JucePlugin_IsMidiEffect
+#if ! JucePlugin_IsSynth
+        .withInput("Input", juce::AudioChannelSet::stereo(), true)
 #endif
-{
-}
-
-StupidHouseAudioProcessor::~StupidHouseAudioProcessor()
-{
-}
-
-//==============================================================================
-const juce::String StupidHouseAudioProcessor::getName() const
-{
-    return JucePlugin_Name;
-}
-
-bool StupidHouseAudioProcessor::acceptsMidi() const
-{
-   #if JucePlugin_WantsMidiInput
-    return true;
-   #else
-    return false;
-   #endif
-}
-
-bool StupidHouseAudioProcessor::producesMidi() const
-{
-   #if JucePlugin_ProducesMidiOutput
-    return true;
-   #else
-    return false;
-   #endif
-}
-
-bool StupidHouseAudioProcessor::isMidiEffect() const
-{
-   #if JucePlugin_IsMidiEffect
-    return true;
-   #else
-    return false;
-   #endif
-}
-
-double StupidHouseAudioProcessor::getTailLengthSeconds() const
-{
-    return 0.0;
-}
-
-int StupidHouseAudioProcessor::getNumPrograms()
-{
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
-}
-
-int StupidHouseAudioProcessor::getCurrentProgram()
-{
-    return 0;
-}
-
-void StupidHouseAudioProcessor::setCurrentProgram (int index)
-{
-}
-
-const juce::String StupidHouseAudioProcessor::getProgramName (int index)
-{
-    return {};
-}
-
-void StupidHouseAudioProcessor::changeProgramName (int index, const juce::String& newName)
-{
-}
-
-//==============================================================================
-void StupidHouseAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-}
-
-void StupidHouseAudioProcessor::releaseResources()
-{
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
-}
-
-#ifndef JucePlugin_PreferredChannelConfigurations
-bool StupidHouseAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
-{
-  #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
-    return true;
-  #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-     && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-    // This checks if the input layout matches the output layout
-   #if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-        return false;
-   #endif
-
-    return true;
-  #endif
-}
+        .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
+    ),
+    parameters(*this, nullptr)
+{
+    // Aquí agregas tus parámetros, ejemplo simple:
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterFloat>(IDs::shape, "Shape", 0.0f, 1.0f, 0.5f));
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterFloat>(IDs::overall, "Overall", 0.0f, 1.0f, 0.5f));
+    
+    parameters.state = juce::ValueTree("parameters");
+}
 
-void StupidHouseAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+const juce::String StupidHouseAudioProcessor::getName() const { return JucePlugin_Name; }
+
+StupidHouseAudioProcessor::~StupidHouseAudioProcessor() {}
+
+bool StupidHouseAudioProcessor::acceptsMidi() const { return false; }
+bool StupidHouseAudioProcessor::producesMidi() const { return false; }
+bool StupidHouseAudioProcessor::isMidiEffect() const { return false; }
+double StupidHouseAudioProcessor::getTailLengthSeconds() const { return 0.0; }
+int StupidHouseAudioProcessor::getNumPrograms() { return 1; }
+int StupidHouseAudioProcessor::getCurrentProgram() { return 0; }
+void StupidHouseAudioProcessor::setCurrentProgram(int) {}
+const juce::String StupidHouseAudioProcessor::getProgramName(int) { return {}; }
+void StupidHouseAudioProcessor::changeProgramName(int, const juce::String&) {}
+
+void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {}
+void StupidHouseAudioProcessor::releaseResources() {}
+
+bool StupidHouseAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+{
+    return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+}
+
+void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
+    auto totalNumInputChannels = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    for (int i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
-    }
+    // Aquí tu procesamiento de audio
 }
 
-//==============================================================================
-bool StupidHouseAudioProcessor::hasEditor() const
-{
-    return true; // (change this to false if you choose to not supply an editor)
-}
 
 juce::AudioProcessorEditor* StupidHouseAudioProcessor::createEditor()
 {
-    return new StupidHouseAudioProcessorEditor (*this);
+    return new StupidHouseAudioProcessorEditor(*this);
+}
+
+bool StupidHouseAudioProcessor::hasEditor() const { return true; }
+
+
+//==============================================================================
+void StupidHouseAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
+{
+    // 1. Copiá el ValueTree actual que contiene todos los parámetros
+    auto state = parameters.copyState();
+
+    // 2. Convertilo a XML
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+    // 3. Guardalo en el bloque binario que el host escribirá en la sesión/preset
+    copyXmlToBinary(*xml, destData);
 }
 
 //==============================================================================
-void StupidHouseAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void StupidHouseAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    // 1. El host devuelve el blob binario: lo convertimos a XML
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+
+    // 2. Si el XML es válido y el tag coincide con el tipo de nuestro ValueTree...
+    if (xmlState != nullptr && xmlState->hasTagName(parameters.state.getType()))
+    {
+        // 3. …lo transformamos en ValueTree y reemplazamos todo el estado.
+        parameters.replaceState(juce::ValueTree::fromXml(*xmlState));
+    }
 }
 
-void StupidHouseAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
-{
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-}
 
-//==============================================================================
-// This creates new instances of the plugin..
+// ** IMPORTANTE: Esta función es la que faltaba y genera el error LNK2001 **
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new StupidHouseAudioProcessor();
