@@ -1,4 +1,4 @@
-# Filter Flow Plugin Project
+# stupidHouse Plugin Project
 
 ## 🎛️ Descripción
 Este es un plugin de audio desarrollado con JUCE que implementa presets y visualizador de espectro
