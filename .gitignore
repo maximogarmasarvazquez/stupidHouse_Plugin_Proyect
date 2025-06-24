@@ -1,0 +1,86 @@
+###############################################################################
+# Sistema operativo
+###############################################################################
+# Archivos de Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Archivos de macOS (por si abrís el proyecto allí algún día)
+.DS_Store
+.AppleDouble
+.LSOverride
+
+###############################################################################
+# Entorno de desarrollo / IDE
+###############################################################################
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.VC.opendb
+# Archivos de usuario (configuración local)
+*.vcxproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+###############################################################################
+# JUCE / Projucer
+###############################################################################
+# Carpeta Builds generada por Projucer (contiene proyectos IDE y binarios)
+Builds/
+# Carpeta cmake-build-* si usás CMake
+cmake-build-*/
+
+###############################################################################
+# Artefactos de compilación
+###############################################################################
+# Objetos y librerías intermedias
+*.obj
+*.pdb
+*.lib
+*.exp
+*.idb
+*.ipdb
+*.iobj
+
+# Ejecutables y DLLs
+*.exe
+*.dll
+
+# Binarios de plugin
+*.vst3
+*.component
+*.aaxplugin/
+*.aaxbundle/
+
+# Paquetes/ instaladores
+*.msi
+*.zip
+*.7z
+*.rar
+*.dmg
+
+###############################################################################
+# Archivos temporales / logs
+###############################################################################
+*.log
+*.tmp
+*.cache
+*.userprefs
+
+###############################################################################
+# Sonar / análisis de código (si lo usás)
+.sonarqube/
+
+###############################################################################
+# Otros
+###############################################################################
+# Archivos de lock de paquetes (por si usás vcpkg, conan, etc.)
+vcpkg_installed/
+conan.lock
