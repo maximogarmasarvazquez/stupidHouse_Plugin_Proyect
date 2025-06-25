@@ -4,6 +4,22 @@
 StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
+    // ComboBoxes visibles
+    addAndMakeVisible(shapeBox);
+    addAndMakeVisible(heatBox);
+    addAndMakeVisible(spiceBox);
+    addAndMakeVisible(depthBox);
+
+    // Opcional: agregás manualmente las opciones visibles si no querés que vengan del parámetro (sólo visual, no funcional):
+    shapeBox.addItemList({ "Soft", "Hard", "Tape" }, 1);  // si querés que se vean incluso si no están conectados aún
+    heatBox.addItemList({ "Soft", "Hard", "Tape" }, 1);  // si querés que se vean incluso si no están conectados aún
+    spiceBox.addItemList({ "Soft", "Hard", "Tape" }, 1);  // si querés que se vean incluso si no están conectados aún
+    depthBox.addItemList({ "Soft", "Hard", "Tape" }, 1);  // si querés que se vean incluso si no están conectados aún
+
+
+    // Attachments
+    using ChoiceAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+
     // Sliders config (igual que antes)
     shapeSlider.setSliderStyle(juce::Slider::Rotary);
     shapeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
@@ -89,6 +105,13 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     // No necesitas hacer addAndMakeVisible para labels con attachToComponent()
 
     // Attachments de sliders a parámetros (igual que antes)
+
+
+    shapePresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::shapePreset, shapeBox);
+    heatPresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::heatPreset, heatBox);
+    spicePresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::spicePreset, spiceBox);
+    depthPresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::depthPreset, depthBox);
+
     shapeAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.parameters, IDs::shape, shapeSlider);
     heatAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.parameters, IDs::heat, heatSlider);
     spiceAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.parameters, IDs::spice, spiceSlider);
@@ -102,7 +125,7 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     highShiftAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.parameters, IDs::highShift, highShiftSlider);
     dryWetModAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(audioProcessor.parameters, IDs::dryWetMod, dryWetModSlider);
 
-    setSize(1000, 600);
+    setSize(900, 600);
 }
 
 
@@ -114,52 +137,67 @@ void StupidHouseAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colours::white);
     g.setFont(15.0f);
 }
-
 void StupidHouseAudioProcessorEditor::resized()
 {
-    const int margin = 20;   // borde exterior
-    const int gap = 10;   // espacio entre sliders
-    const int topRowH = 120;  // alto de la fila superior (A)
-    const int bigSliderSz = 200;  // ancho = alto del slider grande (B)
-    const int smallSz = 80;   // tamaño de los sliders pequeños (C)
+    /* ── Parámetros básicos ─────────────────────────────── */
+    const int margin = 30;
+    const int gapCols = 20;
+    const int topKnobSz = 120;
+    const int comboH = 18;
+    const int comboW = 80;
 
+    const int smallKnob = 90;   // diámetros knobs inferiores
+    const int gapBottom = 15;   // espacio entre knobs inferiores
+    const int overallSz = 140;  // tamaño knob Overall (más grande)
+
+    /* ── Sección superior: 4 knobs + combos ─────────────── */
     auto bounds = getLocalBounds().reduced(margin);
+    auto topArea = bounds.removeFromTop(topKnobSz + comboH + 5);
+    int colW = (topArea.getWidth() - 3 * gapCols) / 4;
 
-    // ── Fila (A) ──
-    auto topRow = bounds.removeFromTop(topRowH);
+    auto placeTop = [&](juce::Slider& sl, juce::ComboBox& cb)
+        {
+            juce::Rectangle<int> col = topArea.removeFromLeft(colW);
+            juce::Rectangle<int> knobR = col.removeFromTop(topKnobSz);
+            sl.setBounds(knobR.withSizeKeepingCentre(topKnobSz, topKnobSz));
 
-    // ── Fila (C) inferior ──
-    auto bottomRowH = smallSz + gap;          // alto = slider + margen
-    auto bottomRow = bounds.removeFromBottom(bottomRowH);
+            int boxX = knobR.getCentreX() - comboW / 2;
+            cb.setBounds(boxX, knobR.getBottom() + 2, comboW, comboH);
 
-    // ── Cuadrado central para el grande (B) ──
-    auto centre = bounds.withSizeKeepingCentre(bigSliderSz, bigSliderSz);
+            topArea.removeFromLeft(gapCols);
+        };
 
-    int filterW = (topRow.getWidth() - 3 * gap) / 4;   // 4 sliders
-    shapeSlider.setBounds(topRow.removeFromLeft(filterW).reduced(5));
-    topRow.removeFromLeft(gap);
-    heatSlider.setBounds(topRow.removeFromLeft(filterW).reduced(5));
-    topRow.removeFromLeft(gap);
-    spiceSlider.setBounds(topRow.removeFromLeft(filterW).reduced(5));
-    topRow.removeFromLeft(gap);
-    depthSlider.setBounds(topRow.removeFromLeft(filterW).reduced(5));
+    placeTop(shapeSlider, shapeBox);
+    placeTop(heatSlider, heatBox);
+    placeTop(spiceSlider, spiceBox);
+    placeTop(depthSlider, depthBox);
 
-    overallSlider.setBounds(centre.reduced(5));
+    /* ── Fila inferior – dos grupos de 3 + Overall central ─────────*/
 
-    // Izquierda (Time, Feedback, DryWetDelay)
-    auto leftCol = bottomRow.removeFromLeft((getWidth() / 2) - (bigSliderSz / 2) - margin);
-    timeSlider.setBounds(leftCol.removeFromLeft(smallSz).withHeight(smallSz));
-    leftCol.removeFromLeft(gap);
-    feedbackSlider.setBounds(leftCol.removeFromLeft(smallSz).withHeight(smallSz));
-    leftCol.removeFromLeft(gap);
-    dryWetDelaySlider.setBounds(leftCol.removeFromLeft(smallSz).withHeight(smallSz));
+    // Coordenadas básicas
+    const int lowRowY = getHeight() - margin - smallKnob;   // top de los knobs pequeños
+    const int grpW = 3 * smallKnob + 2 * gapBottom;      // ancho de cada grupo de 3
+    const int leftX = margin;
+    const int rightX = getWidth() - margin - grpW;
+    const int centreX = getWidth() / 2;
 
-    // Derecha (Speed, HighShift, DryWetMod)
-    auto rightCol = bottomRow.removeFromRight((getWidth() / 2) - (bigSliderSz / 2) - margin);
-    speedSlider.setBounds(rightCol.removeFromLeft(smallSz).withHeight(smallSz));
-    rightCol.removeFromLeft(gap);
-    highShiftSlider.setBounds(rightCol.removeFromLeft(smallSz).withHeight(smallSz));
-    rightCol.removeFromLeft(gap);
-    dryWetModSlider.setBounds(rightCol.removeFromLeft(smallSz).withHeight(smallSz));
+    /* --- Colocar grupos de 3 pequeños --- */
+    auto placeSmallGrp = [&](int startX,
+        juce::Slider& k1, juce::Slider& k2, juce::Slider& k3)
+        {
+            k1.setBounds(startX, lowRowY, smallKnob, smallKnob);
+            k2.setBounds(startX + smallKnob + gapBottom, lowRowY, smallKnob, smallKnob);
+            k3.setBounds(startX + 2 * (smallKnob + gapBottom), lowRowY, smallKnob, smallKnob);
+        };
 
+    placeSmallGrp(leftX, timeSlider, feedbackSlider, dryWetDelaySlider);
+    placeSmallGrp(rightX, speedSlider, highShiftSlider, dryWetModSlider);
+
+    /* --- Knob OVERALL centrado entre los dos grupos --- */
+    // Queremos que verticalmente se alinee (centro) con los pequeños
+    int overallTop = lowRowY - (overallSz - smallKnob) / 2;
+    overallSlider.setBounds(
+        centreX - overallSz / 2,   // X centrado
+        overallTop,              // Y ajustado
+        overallSz, overallSz);
 }

@@ -4,6 +4,11 @@
 
 namespace IDs
 {
+    constexpr auto shapePreset = "shapePreset";
+    constexpr auto heatPreset = "heatPreset";
+    constexpr auto spicePreset = "spicePreset";
+    constexpr auto depthPreset = "depthPreset";
+
     constexpr auto shape = "shape";
     constexpr auto heat = "heat";
     constexpr auto spice = "spice";

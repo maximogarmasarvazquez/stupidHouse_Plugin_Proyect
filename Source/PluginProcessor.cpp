@@ -12,6 +12,22 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     ),
     parameters(*this, nullptr)
 {
+    // 1) Array con los nombres de sub-presets
+    const juce::StringArray subNames{ "Soft", "Hard", "Tape" };
+
+    // 2) Un parámetro Choice por módulo
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterChoice>(
+        IDs::shapePreset, "Shape Preset", subNames, 0));
+
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterChoice>(
+        IDs::heatPreset, "Heat Preset", subNames, 0));
+
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterChoice>(
+        IDs::spicePreset, "Spice Preset", subNames, 0));
+
+    parameters.createAndAddParameter(std::make_unique<juce::AudioParameterChoice>(
+        IDs::depthPreset, "Depth Preset", subNames, 0));
+
     // Aquí agregas tus parámetros, ejemplo simple:
     parameters.createAndAddParameter(std::make_unique<juce::AudioParameterFloat>(IDs::shape, "Shape", 0.0f, 1.0f, 0.5f));
     parameters.createAndAddParameter(std::make_unique<juce::AudioParameterFloat>(IDs::overall, "Overall", 0.0f, 1.0f, 0.5f));

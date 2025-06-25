@@ -14,6 +14,11 @@ public:
 
 private:
     StupidHouseAudioProcessor& audioProcessor;
+
+    // ComboBoxes
+    juce::ComboBox shapeBox, heatBox, spiceBox, depthBox;
+
+
     juce::Label shapeLabel, heatLabel, spiceLabel, depthLabel,overallLabel, timeLabel, feedbackLabel;
     juce::Label dryWetDelayLabel, speedLabel, highShiftLabel, dryWetModLabel;
     // Sliders
@@ -30,6 +35,13 @@ private:
     juce::Slider speedSlider;
     juce::Slider highShiftSlider;
     juce::Slider dryWetModSlider;
+
+
+    // Attachments
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> shapePresetAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> heatPresetAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> spicePresetAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> depthPresetAttach;
 
     // Slider attachments for parameters
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> shapeAttach;
