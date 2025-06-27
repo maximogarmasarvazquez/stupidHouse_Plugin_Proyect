@@ -16,7 +16,7 @@ Este es un plugin de audio desarrollado con JUCE que implementa presets y visual
 git clone https://github.com/maximogarmasarvazquez/stupidHouse_Plugin_Proyect
 ```
 
-2. Abre el archivo `Filter_Flow.jucer` con **Projucer**.
+2. Abre el archivo `stupidHouse.jucer` con **Projucer**.
 
 3. En Projucer, haz clic en **"Save Project and Open in IDE"** para generar el proyecto para Visual Studio (u otro IDE).
 

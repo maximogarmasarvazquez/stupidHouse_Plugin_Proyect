@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "IDs.h"
 
 class StupidHouseAudioProcessorEditor : public juce::AudioProcessorEditor
 {
@@ -15,47 +16,39 @@ public:
 private:
     StupidHouseAudioProcessor& audioProcessor;
 
-    // ComboBoxes
+    // ComboBoxes para presets
     juce::ComboBox shapeBox, heatBox, spiceBox, depthBox;
 
+    // Sliders principales
+    juce::Slider shapeSlider, heatSlider, spiceSlider, depthSlider, overallSlider, outputSlider;
 
-    juce::Label shapeLabel, heatLabel, spiceLabel, depthLabel,overallLabel, timeLabel, feedbackLabel;
-    juce::Label dryWetDelayLabel, speedLabel, highShiftLabel, dryWetModLabel;
-    // Sliders
-    juce::Slider shapeSlider;
-    juce::Slider heatSlider;
-    juce::Slider spiceSlider;
-    juce::Slider depthSlider;
+    // Sliders secundarios
+    juce::Slider timeSlider, feedbackSlider, dryWetDelaySlider;
+    juce::Slider speedSlider, highShelfSlider, dryWetModSlider;
 
-    juce::Slider overallSlider;
-    juce::Slider timeSlider;
-    juce::Slider feedbackSlider;
+    // Labels para sliders
+    juce::Label shapeLabel, heatLabel, spiceLabel, depthLabel, overallLabel, outputLabel;
+    juce::Label timeLabel, feedbackLabel, dryWetDelayLabel;
+    juce::Label speedLabel, highShelfLabel, dryWetModLabel;
 
-    juce::Slider dryWetDelaySlider;
-    juce::Slider speedSlider;
-    juce::Slider highShiftSlider;
-    juce::Slider dryWetModSlider;
+    // Attachments para sliders y combos (smart pointers)
+    using ChoiceAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 
+    std::unique_ptr<ChoiceAttachment> shapePresetAttach, heatPresetAttach, spicePresetAttach, depthPresetAttach;
 
-    // Attachments
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> shapePresetAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> heatPresetAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> spicePresetAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> depthPresetAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> shapeAttach, heatAttach, spiceAttach, depthAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overallAttach, outputAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttach, feedbackAttach, dryWetDelayAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> speedAttach, highShelfAttach, dryWetModAttach;
 
-    // Slider attachments for parameters
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> shapeAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> heatAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> spiceAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> depthAttach;
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overallAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> feedbackAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dryWetDelayAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> speedAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> highShiftAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dryWetModAttach;
+    std::atomic<float>* pSpeed = nullptr;
+    std::atomic<float>* pDryWetMod = nullptr;
+    std::atomic<float>* pTime = nullptr;
+    std::atomic<float>* pFeedback = nullptr;
+    std::atomic<float>* pDryWetDelay = nullptr;
+    std::atomic<float>* pHighShelf = nullptr;
+    std::atomic<float>* pOverall = nullptr;
+    std::atomic<float>* pOutputGain = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StupidHouseAudioProcessorEditor)
 };

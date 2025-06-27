@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="BV5U3n" name="stupidHouse" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.3"
               companyCopyright="MaxiDev" companyName="MaxiDev" companyEmail="Maxivaz55@gmail.com"
-              pluginCode="SH01">
+              pluginCode="SH04">
   <MAINGROUP id="VspmmG" name="stupidHouse">
     <GROUP id="{E572613D-4E41-C7D4-5B2C-9C4B81BC04E4}" name="Source">
+      <GROUP id="{F5A0A385-7298-08FB-DDDF-9B5BECE34348}" name="Utils">
+        <FILE id="CJXtjk" name="LFO.h" compile="0" resource="0" file="Source/LFO.h"/>
+      </GROUP>
+      <GROUP id="{9CD17DBB-1918-4818-8CDC-305836E18409}" name="Modules">
+        <FILE id="xMmdeh" name="ModModule.h" compile="0" resource="0" file="Source/ModModule.h"/>
+        <FILE id="vHDvRX" name="DelayModule.h" compile="0" resource="0" file="Source/DelayModule.h"/>
+        <FILE id="OZiYwO" name="FilterModule.h" compile="0" resource="0" file="Source/FilterModule.h"/>
+        <FILE id="JotVlU" name="ShapeModule.h" compile="0" resource="0" file="Source/ShapeModule.h"/>
+        <FILE id="hOHG3F" name="ShapeModule.cpp" compile="1" resource="0" file="Source/ShapeModule.cpp"/>
+      </GROUP>
+      <FILE id="PvEpNY" name="IDs.h" compile="0" resource="0" file="Source/IDs.h"/>
       <FILE id="qj5KJp" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
       <FILE id="pTRE59" name="PluginProcessor.h" compile="0" resource="0"
