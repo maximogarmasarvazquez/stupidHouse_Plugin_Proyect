@@ -4,7 +4,8 @@
 #include "PluginProcessor.h"
 #include "IDs.h"
 
-class StupidHouseAudioProcessorEditor : public juce::AudioProcessorEditor
+class StupidHouseAudioProcessorEditor : public juce::AudioProcessorEditor,
+    private juce::Timer
 {
 public:
     explicit StupidHouseAudioProcessorEditor(StupidHouseAudioProcessor&);
@@ -14,7 +15,31 @@ public:
     void resized() override;
 
 private:
+    void timerCallback() override;  // <-- método override correcto
+
     StupidHouseAudioProcessor& audioProcessor;
+
+    // Luz indicadora delay
+    class DelayStatusLight : public juce::Component
+    {
+    public:
+        void setActive(bool isActive)
+        {
+            active = isActive;
+            repaint();
+        }
+        void paint(juce::Graphics& g) override
+        {
+            auto color = active ? juce::Colours::green : juce::Colours::red;
+            g.setColour(color);
+            auto bounds = getLocalBounds().toFloat();
+            g.fillEllipse(bounds);
+        }
+    private:
+        bool active = false;
+    };
+
+    DelayStatusLight delayStatusLight;
 
     // ComboBoxes para presets
     juce::ComboBox shapeBox, heatBox, spiceBox, depthBox;

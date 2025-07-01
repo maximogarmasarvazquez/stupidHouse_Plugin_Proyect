@@ -1,5 +1,4 @@
-﻿// P// PluginEditor.cpp
-#include "PluginEditor.h"
+﻿#include "PluginEditor.h"
 #include "IDs.h"
 
 // ── Aliases para ahorrar tipeo ──────────────────────────────────────────────
@@ -7,9 +6,14 @@ using ChoiceAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
 using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Constructor
+// ─────────────────────────────────────────────────────────────────────────────
 StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
+    addAndMakeVisible(delayStatusLight);
+    startTimerHz(30);
+
     /* ---------- ComboBoxes ---------- */
     juce::StringArray presetOptions{ "Default", "Soft", "Hard", "Tape" };
 
@@ -42,7 +46,6 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
             addAndMakeVisible(s);
         };
 
-    // timeSlider ES UN DelaySlider (definido en PluginEditor.h)
     rotaryHV(timeSlider);       rotaryHV(feedbackSlider);    rotaryHV(dryWetDelaySlider);
     rotaryHV(speedSlider);      rotaryHV(highShelfSlider);   rotaryHV(dryWetModSlider);
 
@@ -95,43 +98,53 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
 
 StupidHouseAudioProcessorEditor::~StupidHouseAudioProcessorEditor() {}
 
-/* ========================================================================== */
-/* ========================== PAINT ========================================= */
-/* ========================================================================== */
+// ─────────────────────────────────────────────────────────────────────────────
+// timerCallback: actualizar estado luz delay y sliders
+// ─────────────────────────────────────────────────────────────────────────────
+void StupidHouseAudioProcessorEditor::timerCallback()
+{
+    auto timeValue = audioProcessor.parameters.getRawParameterValue(IDs::time)->load();
+
+    bool delayIsOn = (timeValue > 0.001f);
+
+    delayStatusLight.setActive(delayIsOn);
+
+    feedbackSlider.setEnabled(delayIsOn);
+    dryWetDelaySlider.setEnabled(delayIsOn);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// paint
+// ─────────────────────────────────────────────────────────────────────────────
 void StupidHouseAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    // Fondo con leve degradado
-    juce::Colour dark = juce::Colour::fromRGB(30, 30, 30);
+    juce::Colour dark = juce::Colour::fromRGB(20, 20, 20);
     juce::Colour mid = juce::Colour::fromRGB(50, 50, 50);
 
     g.setGradientFill(juce::ColourGradient(dark, 0, 0, mid, 0, (float)getHeight(), false));
     g.fillAll();
 
-    // Título opcional
     g.setColour(juce::Colours::lightgrey);
     g.setFont(18.0f);
     g.drawFittedText("StupidHouse FX", 0, 4, getWidth(), 24, juce::Justification::centred, 1);
 }
 
-/* ========================================================================== */
-/* ========================== RESIZED ======================================= */
-/* ========================================================================== */
+// ─────────────────────────────────────────────────────────────────────────────
+// resized
+// ─────────────────────────────────────────────────────────────────────────────
 void StupidHouseAudioProcessorEditor::resized()
 {
     const int margin = 30;
     const int gap = 20;
 
-    // Tamaños de knobs
     const int topKnob = 110;
     const int smallK = 90;
     const int overallK = 130;
     const int outputK = 80;
 
-    // Combo‑box
     const int comboH = 20;
     const int comboW = 80;
 
-    /* ---------- Fila superior: 4 knobs + combos ---------- */
     auto area = getLocalBounds().reduced(margin);
     auto top = area.removeFromTop(topKnob + comboH + 10);
 
@@ -153,11 +166,9 @@ void StupidHouseAudioProcessorEditor::resized()
     placeTop(spiceSlider, spiceBox);
     placeTop(depthSlider, depthBox);
 
-    /* ---------- Fila inferior ---------- */
     const int bottomY = getHeight() - margin - smallK;
     const int groupW = 3 * smallK + 2 * gap;
 
-    // — Central pair (Overall + Output) —
     const int pairGap = 16;
     const int pairW = overallK + pairGap + outputK;
     const int pairX = (getWidth() - pairW) / 2;
@@ -170,7 +181,6 @@ void StupidHouseAudioProcessorEditor::resized()
         bottomY - (outputK - smallK) / 2,
         outputK, outputK);
 
-    // — Grupos laterales —
     auto place3 = [&](int x, juce::Slider& a, juce::Slider& b, juce::Slider& c)
         {
             a.setBounds(x, bottomY, smallK, smallK);
@@ -178,6 +188,13 @@ void StupidHouseAudioProcessorEditor::resized()
             c.setBounds(x + 2 * (smallK + gap), bottomY, smallK, smallK);
         };
 
-    place3(margin, timeSlider, feedbackSlider, dryWetDelaySlider);
+    // Primero posiciono los sliders para que tengan su posición actualizada
+    place3(margin, feedbackSlider, timeSlider, dryWetDelaySlider);
     place3(getWidth() - margin - groupW, speedSlider, highShelfSlider, dryWetModSlider);
+
+    // Ahora coloco la luz justo debajo y centrada del timeSlider
+    const int lightSize = 10;
+    int lightX = timeSlider.getX() + (timeSlider.getWidth() / 2) - (lightSize / 2);
+    int lightY = timeSlider.getBottom() + 5;  // Debajo del slider
+    delayStatusLight.setBounds(lightX, lightY, lightSize, lightSize);
 }

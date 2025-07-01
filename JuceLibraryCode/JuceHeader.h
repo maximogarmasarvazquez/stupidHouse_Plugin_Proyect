@@ -43,7 +43,7 @@ namespace ProjectInfo
 {
     const char* const  projectName    = "stupidHouse";
     const char* const  companyName    = "MaxiDev";
-    const char* const  versionString  = "1.3";
-    const int          versionNumber  = 0x10300;
+    const char* const  versionString  = "2.1";
+    const int          versionNumber  = 0x20100;
 }
 #endif

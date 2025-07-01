@@ -47,8 +47,16 @@ public:
     // Parámetros expuestos a la UI
     juce::AudioProcessorValueTreeState parameters;
 
+    // En la clase StupidHouseAudioProcessor
 private:
-    // Módulos de procesamiento
+    juce::SmoothedValue<float> smoothedFeedback;
+    juce::SmoothedValue<float> smoothedSpeed;
+    juce::SmoothedValue<float> smoothedDryWetMod;    // Módulos de procesamiento
+    juce::SmoothedValue<float> smoothedDryWetDelay;
+    juce::SmoothedValue<float> smoothedShelfDb;
+
+    juce::SmoothedValue<float> smoothedOutput;
+
     DelayModule delay;
     ModModule mod;
     FilterModule shelf;

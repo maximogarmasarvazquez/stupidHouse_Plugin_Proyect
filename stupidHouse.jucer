@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT id="BV5U3n" name="stupidHouse" projectType="audioplug" useAppConfig="0"
-              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.3"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="2.1"
               companyCopyright="MaxiDev" companyName="MaxiDev" companyEmail="Maxivaz55@gmail.com"
-              pluginCode="SH04">
+              pluginCode="SH11">
   <MAINGROUP id="VspmmG" name="stupidHouse">
     <GROUP id="{E572613D-4E41-C7D4-5B2C-9C4B81BC04E4}" name="Source">
       <GROUP id="{F5A0A385-7298-08FB-DDDF-9B5BECE34348}" name="Utils">
