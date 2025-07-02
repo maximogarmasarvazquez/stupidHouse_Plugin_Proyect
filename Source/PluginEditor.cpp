@@ -9,7 +9,8 @@ using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
 // Constructor
 // ─────────────────────────────────────────────────────────────────────────────
 StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudioProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
+    fileChooser("Seleccionar archivo de audio...", juce::File{}, "*.wav;*.mp3;*.aiff")
 {
     addAndMakeVisible(delayStatusLight);
     startTimerHz(30);
@@ -92,6 +93,20 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     timeSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     timeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
     // El texto ya lo devuelve DelaySlider::getTextFromValue()
+     /* ---------- Botón "Cargar Audio" ---------- */
+    addAndMakeVisible(loadButton);
+    loadButton.setButtonText("Cargar Audio");
+    loadButton.onClick = [this]()
+        {
+            fileChooser.launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                [this](const juce::FileChooser& fc)
+                {
+                    auto file = fc.getResult();
+                    if (file.existsAsFile())
+                        audioProcessor.loadTestFile(file);
+                });
+        };
+
 
     setSize(900, 600);
 }
@@ -197,4 +212,8 @@ void StupidHouseAudioProcessorEditor::resized()
     int lightX = timeSlider.getX() + (timeSlider.getWidth() / 2) - (lightSize / 2);
     int lightY = timeSlider.getBottom() + 5;  // Debajo del slider
     delayStatusLight.setBounds(lightX, lightY, lightSize, lightSize);
+
+    loadButton.setBounds(margin,     // x  → lado izquierdo
+        getHeight() - margin - 150,  // y  → un poco más arriba
+        100, 35);
 }

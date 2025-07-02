@@ -43,9 +43,11 @@ public:
 
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
+    void loadTestFile(const juce::File& file); // función para cargar audio de prueba
 
     // Parámetros expuestos a la UI
     juce::AudioProcessorValueTreeState parameters;
+
 
     // En la clase StupidHouseAudioProcessor
 private:
@@ -71,6 +73,13 @@ private:
     std::atomic<float>* pOverall{ nullptr };
     std::atomic<float>* pDryWetDelay{ nullptr };
     std::atomic<float>* pOutputGain{ nullptr };
+
+    // Gestión de audio para la función de carga de prueba
+    juce::AudioFormatManager formatManager;
+    std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
+    juce::AudioTransportSource transportSource;
+    juce::CriticalSection                   transportLock;   // evita condiciones de carrera
+
     // Factoría de parámetros
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

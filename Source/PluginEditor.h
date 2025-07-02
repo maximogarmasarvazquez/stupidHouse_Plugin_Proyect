@@ -15,6 +15,9 @@ public:
     void resized() override;
 
 private:
+    juce::TextButton loadButton{ "Cargar Audio" };
+    juce::FileChooser fileChooser;
+
     void timerCallback() override;  // <-- método override correcto
 
     StupidHouseAudioProcessor& audioProcessor;

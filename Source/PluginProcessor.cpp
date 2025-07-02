@@ -19,6 +19,7 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     parameters(*this, nullptr, juce::Identifier("StupidHouseParams"),
         createParameterLayout())
 {
+    formatManager.registerBasicFormats();
     parameters.state = juce::ValueTree("StupidHouseParams");
 
     // Cache de punteros a parámetros
@@ -47,16 +48,16 @@ StupidHouseAudioProcessor::createParameterLayout()
     const StringArray presetNames{ "Default", "Soft", "Hard", "Tape" };
 
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::shapePreset, "Shape Preset", presetNames, 0));
-    params.push_back(std::make_unique<APF>(IDs::shape, "Shape Amount", 0.f, 1.f, 0.5f));
+    params.push_back(std::make_unique<APF>(IDs::shape, "Shape Amount", 0.f, 1.f, 0.f));
 
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::heatPreset, "Heat Preset", presetNames, 0));
-    params.push_back(std::make_unique<APF>(IDs::heat, "Heat Amount", 0.f, 1.f, 0.5f));
+    params.push_back(std::make_unique<APF>(IDs::heat, "Heat Amount", 0.f, 1.f, 0.f));
 
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::spicePreset, "Spice Preset", presetNames, 0));
-    params.push_back(std::make_unique<APF>(IDs::spice, "Spice Amount", 0.f, 1.f, 0.5f));
+    params.push_back(std::make_unique<APF>(IDs::spice, "Spice Amount", 0.f, 1.f, 0.f));
 
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::depthPreset, "Depth Preset", presetNames, 0));
-    params.push_back(std::make_unique<APF>(IDs::depth, "Depth Amount", 0.f, 1.f, 0.5f));
+    params.push_back(std::make_unique<APF>(IDs::depth, "Depth Amount", 0.f, 1.f, 0.f));
 
     params.push_back(std::make_unique<APF>(IDs::overall, "Overall Amount", 0.f, 1.f, 0.5f));
     params.push_back(std::make_unique<APF>(IDs::outputGain, "Output Gain", 0.f, 1.f, 0.5f));
@@ -78,6 +79,7 @@ StupidHouseAudioProcessor::createParameterLayout()
 // ─────────────────────────────────────────────────────────────────────────────
 void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    transportSource.prepareToPlay(samplesPerBlock, sampleRate);
     delay.prepare(sampleRate, static_cast<int> (sampleRate * 2.0));
     mod.prepare(sampleRate);
     shelf.prepare(sampleRate);
@@ -107,19 +109,59 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     lfo.reset();
 }
 
-void StupidHouseAudioProcessor::releaseResources() {}
+void StupidHouseAudioProcessor::releaseResources() {
+    transportSource.releaseResources();
+}
 
 bool StupidHouseAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
     return layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
+//──────────────────────────────────────────────────────────────────────────────
+// Carga de archivo de prueba
+//──────────────────────────────────────────────────────────────────────────────
+void StupidHouseAudioProcessor::loadTestFile(const juce::File& file)
+{
+    if (!file.existsAsFile())
+        return;
+
+    const juce::ScopedLock sl(transportLock); // bloquea mientras reconfiguramos
+
+    transportSource.stop();
+    transportSource.setSource(nullptr);   // suelta cualquier fuente previa
+    readerSource.reset();
+
+    if (auto* reader = formatManager.createReaderFor(file))
+    {
+        readerSource.reset(new juce::AudioFormatReaderSource(reader, true)); // true = owns reader
+        transportSource.setSource(readerSource.get(),
+            0,                       // read ahead (0 → automático)
+            nullptr,                 // no own thread
+            reader->sampleRate);
+        transportSource.setPosition(0.0);
+        transportSource.start();        // reproduce inmediatamente (puedes quitarlo si prefieres play manual)
+    }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // processBlock
 // ─────────────────────────────────────────────────────────────────────────────
-void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
+    juce::MidiBuffer&)
 {
-    juce::ScopedNoDenormals _;
+
+    const juce::ScopedLock sl(transportLock);
+
+    // Reservamos un bloque que apunte al mismo buffer que ya recibió el host
+    juce::AudioSourceChannelInfo info(&buffer, 0, buffer.getNumSamples());
+
+    transportSource.getNextAudioBlock(info);
+
+    juce::ScopedNoDenormals noDenormals;
+
+    // --- Limpiar salidas sobrantes ----------------------------------------
+    for (int ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
+        buffer.clear(ch, 0, buffer.getNumSamples());
 
     const int totalIn = getTotalNumInputChannels();
     const int totalOut = getTotalNumOutputChannels();
@@ -169,6 +211,8 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         for (int ch = 0; ch < numCh; ++ch)
             buffer.getWritePointer(ch)[i] *= g;
     }
+
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
