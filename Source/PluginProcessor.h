@@ -9,6 +9,7 @@
 #include "FilterModule.h"
 #include "LFO.h"
 #include "IDs.h"
+#include "ShapeModule.h"
 
 class StupidHouseAudioProcessor : public juce::AudioProcessor
 {
@@ -63,8 +64,12 @@ private:
     ModModule mod;
     FilterModule shelf;
     LFO lfo;
+    ShapeModule shape;
+
+    std::atomic<float>* pShapePreset{ nullptr };
 
     // Punteros rápidos a parámetros
+    std::atomic<float>* pShape{ nullptr };
     std::atomic<float>* pSpeed{ nullptr };
     std::atomic<float>* pDryWetMod{ nullptr };
     std::atomic<float>* pTime{ nullptr };

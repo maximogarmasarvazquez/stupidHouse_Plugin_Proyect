@@ -1,40 +1,48 @@
-#pragma once
+﻿#pragma once
 #include <JuceHeader.h>
 
-/*------------  Preset struct ------------*/
-struct ShapePreset
+namespace ShapeIntern
 {
-    float drive = 1.0f;        // ganancia previa
-    int   curveType = -1;      // -1 = passthrough, 0 soft, 1 hard, 2 tape
-};
+    inline int   gType = 0;
+    inline float gDrive = 0.5f;
 
-/*------------  Shape DSP module ----------*/
+    static float softClip(float x)
+    {
+        float y = x * gDrive;
+        return std::tanh(y) / std::tanh(gDrive);   // máx = 1
+    }
+    static float hardClip(float x)
+    {
+        float y = x * gDrive;
+        y = juce::jlimit(-1.f, 1.f, y);
+        return y / gDrive;            // divide por drive para bajar RMS
+    }
+    static float tapeSat(float x)
+    {
+        float y = x * gDrive;
+        const float norm = juce::MathConstants<float>::pi * 0.5f / std::atan(gDrive);
+        return std::atan(y) * norm;  // salida máx ≈ 1
+    }
+}
+
 class ShapeModule
 {
 public:
-
-   
-    ShapeModule() = default;
+    ShapeModule()
+        : os(2, 2,
+            juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple) {
+    }
 
     void prepare(double sampleRate, int samplesPerBlock, int numChannels);
-
-    void setPreset(const ShapePreset& p) { current = p; rebuildFunction(); }
-
-
+    void setParameters(int presetIndex, float driveAmount);
     void process(juce::AudioBuffer<float>& buffer);
 
 private:
+    void rebuildFunction();   // actualiza la curva del WaveShaper
 
-    static float softClip(float x) { return std::tanh(x); }
-    static float hardClip(float x) { return juce::jlimit(-1.0f, 1.0f, x); }
-    static float tapeSat(float x) { return 0.5f * std::tanh(2.0f * x + 0.3f * x * x * x); }
-
-    void rebuildFunction();
-
-    ShapePreset current;
-
-    juce::dsp::WaveShaper<float> shaper;
-    juce::dsp::Oversampling<float> os{
-        2, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR
-    };
+    int   curveType = 0;
+    float drive = 0.5f;
+    juce::dsp::Oversampling<float> os{ 2 /*canales*/, 4 /*factor*/,
+    juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR };
+    juce::dsp::WaveShaper<float>   shaper;
 };

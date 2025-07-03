@@ -1,40 +1,61 @@
 #include "ShapeModule.h"
+using namespace ShapeIntern;
 
-void ShapeModule::prepare(double sr, int spb, int chans)
+// ─────────────────────────────────────────────────────────────────────────────
+void ShapeModule::prepare(double sampleRate,
+    int    samplesPerBlock,
+    int    numChannels)
 {
-    juce::dsp::ProcessSpec spec{ sr,
-                                   static_cast<juce::uint32>(spb),
-                                   static_cast<juce::uint32>(chans) };
+    juce::dsp::ProcessSpec spec{ sampleRate,
+                                  static_cast<juce::uint32> (samplesPerBlock),
+                                  static_cast<juce::uint32> (numChannels) };
 
     os.reset();
-    os.initProcessing(spb);        // <-- único llamado necesario al Oversampling
+    os.initProcessing(samplesPerBlock);   // en JUCE 8 basta con esto
 
-    shaper.prepare(spec);          // WaveShaper sí necesita prepare()
+    shaper.prepare(spec);
     rebuildFunction();
 }
 
-void ShapeModule::rebuildFunction()
+// ─────────────────────────────────────────────────────────────────────────────
+void ShapeModule::setParameters(int presetIndex, float driveAmount)
 {
-    switch (current.curveType)
+    if (presetIndex != curveType || driveAmount != drive)
     {
-    case 0:  shaper.functionToUse = &softClip; break;
-    case 1:  shaper.functionToUse = &hardClip; break;
-    case 2:  shaper.functionToUse = &tapeSat;  break;
-    default: // passthrough
-        shaper.functionToUse = [](float x) { return x; };
-        break;
+        curveType = presetIndex;
+        drive = driveAmount;
+        rebuildFunction();
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 void ShapeModule::process(juce::AudioBuffer<float>& buffer)
 {
     auto block = juce::dsp::AudioBlock<float>(buffer);
-    auto upBlock = os.processSamplesUp(block);
+    auto upsampled = os.processSamplesUp(block);            // ↑ x2
 
-    upBlock.multiplyBy(current.drive);          // aplica el drive antes de la curva
+    juce::dsp::ProcessContextReplacing<float> ctx(upsampled);
+    shaper.process(ctx);                                     // distorsión
 
-    juce::dsp::ProcessContextReplacing<float> ctx(upBlock);
-    shaper.process(ctx);
+    os.processSamplesDown(block);                            // ↓ x2
+}
 
-    os.processSamplesDown(block);
+// ─────────────────────────────────────────────────────────────────────────────
+void ShapeModule::rebuildFunction()
+{
+    // Copiamos a las variables globales para que la lambda sin capturas funcione
+    gType = curveType;
+    gDrive = drive;
+
+    shaper.functionToUse = [](float x) -> float
+        {
+            switch (gType)
+            {
+            case 0:  return x;          // Default: sin distorsión, señal limpia
+            case 1:  return softClip(x);
+            case 2:  return hardClip(x);
+            case 3:  return tapeSat(x);
+            default: return x;          // En caso de valor fuera de rango, también sin distorsión
+            }
+        };
 }
