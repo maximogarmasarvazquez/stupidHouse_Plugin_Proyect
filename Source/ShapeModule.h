@@ -20,7 +20,7 @@ namespace ShapeIntern
     static float tapeSat(float x)
     {
         float y = x * gDrive;
-        const float norm = juce::MathConstants<float>::pi * 0.5f / std::atan(gDrive);
+        float norm = juce::MathConstants<float>::pi * 0.5f / std::atan(gDrive);
         return std::atan(y) * norm;  // salida máx ≈ 1
     }
 }

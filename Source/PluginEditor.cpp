@@ -47,8 +47,16 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
             addAndMakeVisible(s);
         };
 
-    rotaryHV(timeSlider);       rotaryHV(feedbackSlider);    rotaryHV(dryWetDelaySlider);
+    rotaryHV(dryWetDelaySlider);
     rotaryHV(speedSlider);      rotaryHV(highShelfSlider);   rotaryHV(dryWetModSlider);
+
+    // ** timeSlider y feedbackSlider también con rotaryHV pero sin attachment **
+    rotaryHV(timeSlider);
+    rotaryHV(feedbackSlider);
+
+    timeSlider.setNumDecimalPlacesToDisplay(2);
+    timeSlider.setTextValueSuffix(" s");
+    feedbackSlider.setNumDecimalPlacesToDisplay(2);
 
     /* ---------- Labels ---------- */
     auto label = [](juce::Label& l, juce::Slider& s, const juce::String& t)
@@ -83,18 +91,30 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     depthAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::depth, depthSlider);
     overallAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::overall, overallSlider);
     outputAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::outputGain, outputSlider);
-    timeAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::time, timeSlider);
-    feedbackAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::feedback, feedbackSlider);
     dryWetDelayAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::dryWetDelay, dryWetDelaySlider);
     speedAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::speed, speedSlider);
     highShelfAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::highShelf, highShelfSlider);
     dryWetModAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::dryWetMod, dryWetModSlider);
 
-    /* ---------- timeSlider configuración específica ---------- */
-    timeSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    timeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
-    // El texto ya lo devuelve DelaySlider::getTextFromValue()
-     /* ---------- Botón "Cargar Audio" ---------- */
+    // ---------- Configurar debounce para timeSlider ----------
+    timeSlider.onValueChange = [this]()
+        {
+            timeSliderIsBeingDragged = true;
+            timeSliderLastMoveTime = juce::Time::getMillisecondCounterHiRes();
+            // No actualizamos el parámetro directamente aún
+            startTimer(50);
+        };
+
+    // ---------- Configurar debounce para feedbackSlider ----------
+    feedbackSlider.onValueChange = [this]()
+        {
+            feedbackSliderIsBeingDragged = true;
+            feedbackSliderLastMoveTime = juce::Time::getMillisecondCounterHiRes();
+            // No actualizamos el parámetro directamente aún
+            startTimer(50);
+        };
+
+    /* ---------- Botón "Cargar Audio" ---------- */
     addAndMakeVisible(loadButton);
     loadButton.setButtonText("Cargar Audio");
     loadButton.onClick = [this]()
@@ -108,17 +128,49 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
                 });
         };
 
-
     setSize(900, 600);
 }
 
 StupidHouseAudioProcessorEditor::~StupidHouseAudioProcessorEditor() {}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// timerCallback: actualizar estado luz delay y sliders
+// timerCallback: debounce sliders y actualizar estado luz delay y sliders
 // ─────────────────────────────────────────────────────────────────────────────
 void StupidHouseAudioProcessorEditor::timerCallback()
 {
+    double now = juce::Time::getMillisecondCounterHiRes();
+
+    // debounce timeSlider
+    if (timeSliderIsBeingDragged)
+    {
+        if (now - timeSliderLastMoveTime > 300)  // 300 ms sin cambios
+        {
+            timeSliderIsBeingDragged = false;
+
+            float newValue = (float)timeSlider.getValue();
+            auto* param = audioProcessor.parameters.getParameter(IDs::time);
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1(newValue));
+            param->endChangeGesture();
+        }
+    }
+
+    // debounce feedbackSlider
+    if (feedbackSliderIsBeingDragged)
+    {
+        if (now - feedbackSliderLastMoveTime > 300)  // 300 ms sin cambios
+        {
+            feedbackSliderIsBeingDragged = false;
+
+            float newValue = (float)feedbackSlider.getValue();
+            auto* param = audioProcessor.parameters.getParameter(IDs::feedback);
+            param->beginChangeGesture();
+            param->setValueNotifyingHost(param->convertTo0to1(newValue));
+            param->endChangeGesture();
+        }
+    }
+
+    // --- Tu código original para delayStatusLight y sliders habilitados ---
     auto timeValue = audioProcessor.parameters.getRawParameterValue(IDs::time)->load();
 
     bool delayIsOn = (timeValue > 0.001f);

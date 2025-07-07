@@ -50,7 +50,7 @@ private:
     // Sliders principales
     juce::Slider shapeSlider, heatSlider, spiceSlider, depthSlider, overallSlider, outputSlider;
 
-    // Sliders secundarios
+    // Sliders secundarios (con debounce en timeSlider y feedbackSlider)
     juce::Slider timeSlider, feedbackSlider, dryWetDelaySlider;
     juce::Slider speedSlider, highShelfSlider, dryWetModSlider;
 
@@ -67,17 +67,18 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> shapeAttach, heatAttach, spiceAttach, depthAttach;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> overallAttach, outputAttach;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttach, feedbackAttach, dryWetDelayAttach;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dryWetDelayAttach;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> speedAttach, highShelfAttach, dryWetModAttach;
 
-    std::atomic<float>* pSpeed = nullptr;
-    std::atomic<float>* pDryWetMod = nullptr;
-    std::atomic<float>* pTime = nullptr;
-    std::atomic<float>* pFeedback = nullptr;
-    std::atomic<float>* pDryWetDelay = nullptr;
-    std::atomic<float>* pHighShelf = nullptr;
-    std::atomic<float>* pOverall = nullptr;
-    std::atomic<float>* pOutputGain = nullptr;
+    // ** NO attachment para timeSlider y feedbackSlider, manejados con debounce **
+
+    // Variables para debounce slider time
+    bool timeSliderIsBeingDragged = false;
+    double timeSliderLastMoveTime = 0.0;
+
+    // Variables para debounce slider feedback
+    bool feedbackSliderIsBeingDragged = false;
+    double feedbackSliderLastMoveTime = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StupidHouseAudioProcessorEditor)
 };

@@ -1,7 +1,4 @@
-﻿// ===============================
-// PluginProcessor.h
-// ===============================
-#pragma once
+﻿#pragma once
 
 #include <JuceHeader.h>
 #include "DelayModule.h"
@@ -15,28 +12,24 @@ class StupidHouseAudioProcessor : public juce::AudioProcessor
 {
 public:
     StupidHouseAudioProcessor();
-    ~StupidHouseAudioProcessor() override;
+    ~StupidHouseAudioProcessor() override = default; // Destructor inline para resolver el linker
 
-    // AudioProcessor overrides
+    // ───────────── AudioProcessor overrides ─────────────
     const juce::String getName() const override;
-
-    bool acceptsMidi() const override;
-    bool producesMidi() const override;
-    bool isMidiEffect() const override;
-
+    bool   acceptsMidi()  const override;
+    bool   producesMidi() const override;
+    bool   isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
-    int getNumPrograms() override;
-    int getCurrentProgram() override;
+    int  getNumPrograms() override;
+    int  getCurrentProgram() override;
     void setCurrentProgram(int) override;
     const juce::String getProgramName(int) override;
     void changeProgramName(int, const juce::String&) override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
-
     bool isBusesLayoutSupported(const BusesLayout&) const override;
-
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     bool hasEditor() const override;
@@ -44,31 +37,33 @@ public:
 
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
-    void loadTestFile(const juce::File& file); // función para cargar audio de prueba
 
-    // Parámetros expuestos a la UI
+    // Cargar un archivo de audio de prueba
+    void loadTestFile(const juce::File& file);
+
+    // ValueTree con todos los parámetros
     juce::AudioProcessorValueTreeState parameters;
 
-
-    // En la clase StupidHouseAudioProcessor
 private:
+    /*─────────── Módulos DSP ───────────*/
+    DelayModule  delay;   // Feedback + dry/wet internos
+    ModModule    mod;
+    FilterModule shelf;
+    LFO          lfo;
+    ShapeModule  shape;
+
+    /*─────────── Smoothed values ───────*/
     juce::SmoothedValue<float> smoothedFeedback;
     juce::SmoothedValue<float> smoothedSpeed;
-    juce::SmoothedValue<float> smoothedDryWetMod;    // Módulos de procesamiento
-    juce::SmoothedValue<float> smoothedDryWetDelay;
+    juce::SmoothedValue<float> smoothedDryWetMod;
     juce::SmoothedValue<float> smoothedShelfDb;
-
     juce::SmoothedValue<float> smoothedOutput;
 
-    DelayModule delay;
-    ModModule mod;
-    FilterModule shelf;
-    LFO lfo;
-    ShapeModule shape;
+    /*─────────── Buffer auxiliar ───────*/
+    juce::AudioBuffer<float> wetBuffer;
 
+    /*─────────── Punteros a parámetro ──*/
     std::atomic<float>* pShapePreset{ nullptr };
-
-    // Punteros rápidos a parámetros
     std::atomic<float>* pShape{ nullptr };
     std::atomic<float>* pSpeed{ nullptr };
     std::atomic<float>* pDryWetMod{ nullptr };
@@ -79,13 +74,12 @@ private:
     std::atomic<float>* pDryWetDelay{ nullptr };
     std::atomic<float>* pOutputGain{ nullptr };
 
-    // Gestión de audio para la función de carga de prueba
-    juce::AudioFormatManager formatManager;
+    /*─────────── Helpers archivo prueba ─*/
+    juce::AudioFormatManager                       formatManager;
     std::unique_ptr<juce::AudioFormatReaderSource> readerSource;
-    juce::AudioTransportSource transportSource;
-    juce::CriticalSection                   transportLock;   // evita condiciones de carrera
+    juce::AudioTransportSource                     transportSource;
+    juce::CriticalSection                          transportLock;
 
-    // Factoría de parámetros
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StupidHouseAudioProcessor)
