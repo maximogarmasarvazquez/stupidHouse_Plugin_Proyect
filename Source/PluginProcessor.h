@@ -8,11 +8,16 @@
 #include "IDs.h"
 #include "ShapeModule.h"
 
-class StupidHouseAudioProcessor : public juce::AudioProcessor
+class StupidHouseAudioProcessor : public juce::AudioProcessor,
+    public juce::AudioProcessorValueTreeState::Listener
+
 {
 public:
     StupidHouseAudioProcessor();
-    ~StupidHouseAudioProcessor() override = default; // Destructor inline para resolver el linker
+    ~StupidHouseAudioProcessor() override;
+
+    void parameterChanged(const juce::String& parameterID,
+        float newValue) override;
 
     // ───────────── AudioProcessor overrides ─────────────
     const juce::String getName() const override;
@@ -45,6 +50,8 @@ public:
     juce::AudioProcessorValueTreeState parameters;
 
 private:
+    std::atomic<bool> delayMuted{ false };
+
     /*─────────── Módulos DSP ───────────*/
     DelayModule  delay;   // Feedback + dry/wet internos
     ModModule    mod;

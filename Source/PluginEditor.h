@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
@@ -18,7 +18,7 @@ private:
     juce::TextButton loadButton{ "Cargar Audio" };
     juce::FileChooser fileChooser;
 
-    void timerCallback() override;  // <-- m�todo override correcto
+    void timerCallback() override;  // override correcto
 
     StupidHouseAudioProcessor& audioProcessor;
 
@@ -50,7 +50,7 @@ private:
     // Sliders principales
     juce::Slider shapeSlider, heatSlider, spiceSlider, depthSlider, overallSlider, outputSlider;
 
-    // Sliders secundarios (con debounce en timeSlider y feedbackSlider)
+    // Sliders secundarios
     juce::Slider timeSlider, feedbackSlider, dryWetDelaySlider;
     juce::Slider speedSlider, highShelfSlider, dryWetModSlider;
 
@@ -61,6 +61,8 @@ private:
 
     // Attachments para sliders y combos (smart pointers)
     using ChoiceAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+    // Attachments para sliders…
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> timeAttach;   // ← NUEVO
 
     std::unique_ptr<ChoiceAttachment> shapePresetAttach, heatPresetAttach, spicePresetAttach, depthPresetAttach;
 
@@ -70,15 +72,14 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> dryWetDelayAttach;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> speedAttach, highShelfAttach, dryWetModAttach;
 
-    // ** NO attachment para timeSlider y feedbackSlider, manejados con debounce **
+    // Ahora feedbackSlider tiene attachment también:
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> feedbackAttach;
 
-    // Variables para debounce slider time
-    bool timeSliderIsBeingDragged = false;
-    double timeSliderLastMoveTime = 0.0;
+    // ** Ya no hay debounce manual para timeSlider y feedbackSlider **
 
-    // Variables para debounce slider feedback
-    bool feedbackSliderIsBeingDragged = false;
-    double feedbackSliderLastMoveTime = 0.0;
+public:
+    void setDelayLight(bool isActive);
+    void resetDelaySliders();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StupidHouseAudioProcessorEditor)
 };
