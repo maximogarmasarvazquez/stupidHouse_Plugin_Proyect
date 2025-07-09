@@ -58,6 +58,10 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     timeSlider.setTextValueSuffix(" s");
     feedbackSlider.setNumDecimalPlacesToDisplay(2);
 
+    speedSlider.setNumDecimalPlacesToDisplay(2);
+    speedSlider.setTextValueSuffix(" Hz");
+
+
     /* ---------- Labels ---------- */
     auto label = [](juce::Label& l, juce::Slider& s, const juce::String& t)
         {

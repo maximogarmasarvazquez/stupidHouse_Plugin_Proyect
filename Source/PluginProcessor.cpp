@@ -84,13 +84,13 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
 
     wetBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
 
-    smoothedOutput.reset(sampleRate, 0.02);       // 20 ms
-    smoothedFeedback.reset(sampleRate, 0.05);     // 50 ms
-    smoothedSpeed.reset(sampleRate, 0.02);        // 20 ms
-    smoothedDryWetMod.reset(sampleRate, 0.02);    // 20 ms
-    smoothedShelfDb.reset(sampleRate, 0.02);      // 20 ms
+    smoothedOutput.reset(sampleRate, 0.002);       // 02 ms
+    smoothedFeedback.reset(sampleRate, 0.01);     //  10 ms
+    smoothedSpeed.reset(sampleRate, 0.005);       //   10 ms
+    smoothedDryWetMod.reset(sampleRate, 0.005);  //    10 ms
+    smoothedShelfDb.reset(sampleRate, 0.01);   //     10 ms
 
-    smoothedOutput.setCurrentAndTargetValue(1.0f);
+    smoothedOutput.setCurrentAndTargetValue(0.0f);
     smoothedFeedback.setCurrentAndTargetValue(0.0f);
     smoothedSpeed.setCurrentAndTargetValue(0.0f);
     smoothedDryWetMod.setCurrentAndTargetValue(0.0f);
@@ -152,7 +152,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     }
 
     /* 1. Distorsión (Shape) */
-    const float overallK = pOverall ? pOverall->load() : 0.5f;
+    const float overallK = pOverall ? pOverall->load() : 0.1f;
     const int   shapePreset = (int)(pShapePreset ? pShapePreset->load() : 0);
     const float shapeAmt = pShape ? pShape->load() : 0.f;
     const float intensity = shapeAmt * overallK;
@@ -201,9 +201,9 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     shelf.setGainDecibels(shelfDb);
 
-    mod.process(buffer);
     delay.process(buffer);
     shelf.process(buffer);
+    mod.process(buffer);
 
     /* 5. Ganancia de salida */
     const float outGain = smoothedOutput.getNextValue();
