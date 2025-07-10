@@ -14,14 +14,23 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     startTimerHz(30); // Actualiza la luz y bloqueo cada ~33ms
 
     // Presets
-    juce::StringArray presetOptions{ "Default", "Soft", "Hard", "Tape" };
-    auto setupBox = [this, &presetOptions](juce::ComboBox& box)
-        {
-            box.addItemList(presetOptions, 1);
-            addAndMakeVisible(box);
-        };
-    setupBox(shapeBox);  setupBox(heatBox);
-    setupBox(spiceBox);  setupBox(depthBox);
+
+    juce::StringArray shapePresetOptions{ "Default", "Soft", "Hard", "Tape", "Foldback" };
+    juce::StringArray heatPresetOptions{ "Default", "Mild", "Medium", "Extreme" };
+    juce::StringArray spicePresetOptions{ "Default", "Low", "Medium", "High" };
+    juce::StringArray depthPresetOptions{ "Default", "Shallow", "Medium", "Deep" };
+
+
+   
+   
+    shapeBox.addItemList(shapePresetOptions, 1);
+    heatBox.addItemList(heatPresetOptions, 1);
+    spiceBox.addItemList(spicePresetOptions, 1);
+    depthBox.addItemList(depthPresetOptions, 1);
+    addAndMakeVisible(shapeBox);
+    addAndMakeVisible(heatBox);
+    addAndMakeVisible(spiceBox);
+    addAndMakeVisible(depthBox);
 
     // Sliders
     auto rotary = [this](juce::Slider& s)
@@ -94,6 +103,7 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     feedbackAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::feedback, feedbackSlider);
 
     // Botón Cargar
+
     addAndMakeVisible(loadButton);
     loadButton.setButtonText("Cargar Audio");
     loadButton.onClick = [this]()

@@ -11,15 +11,17 @@ void ShapeModule::prepare(double sampleRate,
                                   static_cast<juce::uint32> (numChannels) };
 
     os.reset();
-    os.initProcessing(samplesPerBlock);   // en JUCE 8 basta con esto
+    os.initProcessing(samplesPerBlock);   // en JUCE 8 basta con esto
 
     shaper.prepare(spec);
     rebuildFunction();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void ShapeModule::setParameters(int presetIndex, float driveAmount)
+void ShapeModule::setParameters(ShapePreset preset, float driveAmount)
 {
+    const int presetIndex = static_cast<int>(preset);
+
     if (presetIndex != curveType || driveAmount != drive)
     {
         curveType = presetIndex;
@@ -32,12 +34,12 @@ void ShapeModule::setParameters(int presetIndex, float driveAmount)
 void ShapeModule::process(juce::AudioBuffer<float>& buffer)
 {
     auto block = juce::dsp::AudioBlock<float>(buffer);
-    auto upsampled = os.processSamplesUp(block);            // ↑ x2
+    auto upsampled = os.processSamplesUp(block);            // ↑ x4
 
     juce::dsp::ProcessContextReplacing<float> ctx(upsampled);
     shaper.process(ctx);                                     // distorsión
 
-    os.processSamplesDown(block);                            // ↓ x2
+    os.processSamplesDown(block);                            // ↓ x4
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,11 +53,12 @@ void ShapeModule::rebuildFunction()
         {
             switch (gType)
             {
-            case 0:  return x;          // Default: sin distorsión, señal limpia
+            case 0:  return x;
             case 1:  return softClip(x);
             case 2:  return hardClip(x);
             case 3:  return tapeSat(x);
-            default: return x;          // En caso de valor fuera de rango, también sin distorsión
+            case 4:  return foldback(x);
+            default: return x;
             }
         };
 }

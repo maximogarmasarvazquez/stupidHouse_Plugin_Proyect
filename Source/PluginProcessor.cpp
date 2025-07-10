@@ -42,15 +42,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout StupidHouseAudioProcessor::c
     using APF = AudioParameterFloat;
 
     std::vector<std::unique_ptr<RangedAudioParameter>> params;
-    StringArray presetNames{ "Default", "Soft", "Hard", "Tape" };
 
-    params.push_back(std::make_unique<AudioParameterChoice>(IDs::shapePreset, "Shape Preset", presetNames, 0));
+    StringArray shapePresetNames{ "Default", "Soft", "Hard", "Tape", "Foldback" };
+    StringArray heatPresetNames{ "Default", "Mild", "Medium", "Extreme" };
+    StringArray spicePresetNames{ "Default", "Low", "Medium", "High" };
+    StringArray depthPresetNames{ "Default", "Shallow", "Medium", "Deep" };
+
+    params.push_back(std::make_unique<AudioParameterChoice>(IDs::shapePreset, "Shape Preset", shapePresetNames, 0));
     params.push_back(std::make_unique<APF>(IDs::shape, "Shape Amount", 0.f, 1.f, 0.f));
-    params.push_back(std::make_unique<AudioParameterChoice>(IDs::heatPreset, "Heat Preset", presetNames, 0));
+    params.push_back(std::make_unique<AudioParameterChoice>(IDs::heatPreset, "Heat Preset", heatPresetNames, 0));
     params.push_back(std::make_unique<APF>(IDs::heat, "Heat Amount", 0.f, 1.f, 0.f));
-    params.push_back(std::make_unique<AudioParameterChoice>(IDs::spicePreset, "Spice Preset", presetNames, 0));
+    params.push_back(std::make_unique<AudioParameterChoice>(IDs::spicePreset, "Spice Preset", spicePresetNames, 0));
     params.push_back(std::make_unique<APF>(IDs::spice, "Spice Amount", 0.f, 1.f, 0.f));
-    params.push_back(std::make_unique<AudioParameterChoice>(IDs::depthPreset, "Depth Preset", presetNames, 0));
+    params.push_back(std::make_unique<AudioParameterChoice>(IDs::depthPreset, "Depth Preset", depthPresetNames, 0));
     params.push_back(std::make_unique<APF>(IDs::depth, "Depth Amount", 0.f, 1.f, 0.f));
 
     params.push_back(std::make_unique<APF>(IDs::overall, "Overall Amount", 0.f, 1.f, 0.5f));
@@ -157,9 +161,10 @@ void StupidHouseAudioProcessor::parameterChanged(const juce::String& parameterID
         delayMuted = false;
     }
 }
-
 void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
+    constexpr float maxDrive = 3.5f;
+
     const int numSamples = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
@@ -170,20 +175,31 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     }
 
     const float overallK = pOverall ? pOverall->load() : 0.1f;
-    const int shapePreset = (int)(pShapePreset ? pShapePreset->load() : 0);
-    const float shapeAmt = pShape ? pShape->load() : 0.f;
-    const float intensity = shapeAmt * overallK;
 
-    shape.setParameters(intensity <= 0.001f ? 0 : shapePreset,
-        intensity <= 0.001f ? 0.f : juce::jmap(intensity, 0.f, 1.f, 0.f, 6.f));
-    shape.process(buffer);
+    // ───── Shape ────────────────────────────────────────────────
+    {
+        float shapeAmount = *parameters.getRawParameterValue(IDs::shape);
+        int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
+        ShapePreset safePreset = static_cast<ShapePreset>(juce::jlimit(0, 4, shapePresetRaw));
+        float intensity = shapeAmount * overallK;
 
+        if (safePreset != ShapePreset::Clean && intensity > 0.001f)
+        {
+            float driveAmount = juce::jmap(intensity, 0.f, 1.f, 0.f, maxDrive);
+            shape.setParameters(safePreset, driveAmount);
+            shape.process(buffer);
+        }
+        // Si está en Clean o intensidad es casi cero, no hacemos nada (buffer pasa intacto)
+    }
+
+    // ───── Smoothing parámetros generales ───────────────────────
     smoothedOutput.setTargetValue(juce::jmap(pOutputGain ? pOutputGain->load() : 0.5f, 0.f, 1.f, 0.f, 2.f));
     smoothedShelfDb.setTargetValue((pHighShelf ? pHighShelf->load() : 0.f) * overallK);
     smoothedSpeed.setTargetValue((pSpeed ? pSpeed->load() : 0.f) * overallK);
     smoothedDryWetMod.setTargetValue((pDryWetMod ? pDryWetMod->load() : 0.f) * overallK);
     smoothedFeedback.setTargetValue((pFeedback ? pFeedback->load() : 0.f) * overallK);
 
+    // ───── Parámetros de modulación y delay ─────────────────────
     const float speedHz = juce::jmap(smoothedSpeed.getNextValue(), 0.f, 1.f, 0.f, 10.f);
     const float modMix = smoothedDryWetMod.getNextValue();
     const float shelfDb = smoothedShelfDb.getNextValue();
@@ -200,6 +216,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         fb = 0.f;
     }
 
+    // ───── Procesado de efectos secundarios ─────────────────────
     mod.setParameters(speedHz, modMix);
     delay.setTime(timeSec);
     delay.setFeedback(fb);
@@ -210,6 +227,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     shelf.process(buffer);
     mod.process(buffer);
 
+    // ───── Output Gain ──────────────────────────────────────────
     const float outGain = smoothedOutput.getNextValue();
     for (int ch = 0; ch < numChannels; ++ch)
     {
