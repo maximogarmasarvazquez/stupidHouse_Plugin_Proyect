@@ -186,7 +186,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         if (safePreset != ShapePreset::Clean && intensity > 0.001f)
         {
             float driveAmount = juce::jmap(intensity, 0.f, 1.f, 0.f, maxDrive);
-            shape.setParameters(safePreset, driveAmount, true); // ← AGC activado
+            shape.setParameters(safePreset, driveAmount, 1.0f, true);
             shape.process(buffer);
         }
     }
