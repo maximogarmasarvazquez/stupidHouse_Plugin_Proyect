@@ -18,7 +18,6 @@ private:
     juce::TextButton loadButton{ "Cargar Audio" };
     juce::FileChooser fileChooser;
 
-    void timerCallback() override;  // override correcto
 
     StupidHouseAudioProcessor& audioProcessor;
 
@@ -77,6 +76,10 @@ private:
 
     // ** Ya no hay debounce manual para timeSlider y feedbackSlider **
 
+private:
+    void timerCallback() override;
+
+    void shapeSliderChanged();  // Método que responderá al cambio de slider al soltar
 public:
     void setDelayLight(bool isActive);
     void resetDelaySliders();

@@ -52,8 +52,13 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     rotaryHV(dryWetDelaySlider);
     rotaryHV(speedSlider); rotaryHV(highShelfSlider); rotaryHV(dryWetModSlider);
     rotaryHV(timeSlider); timeSlider.setChangeNotificationOnlyOnRelease(true);   // ← NUEVO
-    rotaryHV(feedbackSlider);
-    rotaryHV(timeSlider);
+
+    shapeSlider.setChangeNotificationOnlyOnRelease(true);
+
+    shapeSlider.onValueChange = [this]()
+        {
+            shapeSliderChanged();
+        };
     rotaryHV(feedbackSlider);
 
     //  ⬇ Añadí esta línea:
@@ -64,7 +69,9 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     feedbackSlider.setNumDecimalPlacesToDisplay(2);
     speedSlider.setNumDecimalPlacesToDisplay(2);
     speedSlider.setTextValueSuffix(" Hz");
-
+    shapeSlider.setRange(0.0, 2.0);  // Rango debe coincidir con el parámetro en createParameterLayout()
+    shapeSlider.setNumDecimalPlacesToDisplay(2); 
+    shapeSlider.setTextValueSuffix("");
     // Labels
     auto label = [](juce::Label& l, juce::Slider& s, const juce::String& t)
         {
@@ -90,7 +97,6 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     spicePresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::spicePreset, spiceBox);
     depthPresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::depthPreset, depthBox);
 
-    shapeAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::shape, shapeSlider);
     heatAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::heat, heatSlider);
     spiceAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::spice, spiceSlider);
     depthAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::depth, depthSlider);
@@ -122,6 +128,11 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
 
 StupidHouseAudioProcessorEditor::~StupidHouseAudioProcessorEditor() {}
 
+void StupidHouseAudioProcessorEditor::shapeSliderChanged()
+{
+    // Enviar el valor final del slider al procesador
+    audioProcessor.setDriveAmountFromEditor((float)shapeSlider.getValue());
+}
 void StupidHouseAudioProcessorEditor::paint(juce::Graphics& g)
 {
     juce::Colour dark = juce::Colour::fromRGB(20, 20, 20);

@@ -18,6 +18,7 @@ public:
 
     void parameterChanged(const juce::String& parameterID,
         float newValue) override;
+    void setDriveAmountFromEditor(float newDrive);
 
     // ───────────── AudioProcessor overrides ─────────────
     const juce::String getName() const override;
@@ -51,7 +52,9 @@ public:
 
 private:
     std::atomic<bool> delayMuted{ false };
-
+    private:
+        float currentDriveAmount = 0.f;  // Guarda el valor enviado desde el editor
+public:
     /*─────────── Módulos DSP ───────────*/
     DelayModule  delay;   // Feedback + dry/wet internos
     ModModule    mod;
@@ -65,6 +68,9 @@ private:
     juce::SmoothedValue<float> smoothedDryWetMod;
     juce::SmoothedValue<float> smoothedShelfDb;
     juce::SmoothedValue<float> smoothedOutput;
+
+    juce::SmoothedValue<float> smoothedGainComp;
+    juce::SmoothedValue<float> smoothedGainCompensation;
 
     /*─────────── Buffer auxiliar ───────*/
     juce::AudioBuffer<float> wetBuffer;
