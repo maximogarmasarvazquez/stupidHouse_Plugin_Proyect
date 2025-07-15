@@ -24,11 +24,12 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     pOverall = parameters.getRawParameterValue(IDs::overall);
     pOutputGain = parameters.getRawParameterValue(IDs::outputGain);
     pShape = parameters.getRawParameterValue(IDs::shape);
+    pDryWetDistortion = parameters.getRawParameterValue(IDs::dryWetDistortion);
 
     parameters.addParameterListener(IDs::time, this);
 
     jassert(pShape && pShapePreset && pSpeed && pDryWetMod && pTime &&
-        pFeedback && pDryWetDelay && pHighShelf && pOverall && pOutputGain);
+        pFeedback && pDryWetDelay && pHighShelf && pOverall && pDryWetDistortion && pOutputGain);
 }
 
 StupidHouseAudioProcessor::~StupidHouseAudioProcessor()
@@ -161,6 +162,7 @@ void StupidHouseAudioProcessor::parameterChanged(const juce::String& parameterID
         delayMuted = false;
     }
 }
+
 void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     constexpr float maxDrive = 3.5f;
@@ -176,7 +178,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
     const float overallK = pOverall ? pOverall->load() : 0.1f;
 
-    // ───── Shape ────────────────────────────────────────────────
+    // ───── Shape (Distorsión) ───────────────────────────────────────────────
     {
         float shapeAmount = *parameters.getRawParameterValue(IDs::shape);
         int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
@@ -186,8 +188,27 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         if (safePreset != ShapePreset::Clean && intensity > 0.001f)
         {
             float driveAmount = juce::jmap(intensity, 0.f, 1.f, 0.f, maxDrive);
-            shape.setParameters(safePreset, driveAmount, 1.0f, true);
+            float outputGainParam = pOutputGain ? pOutputGain->load() : 1.0f;
+
+            shape.setParameters(safePreset, driveAmount, outputGainParam,true, false);
+
+            // Creamos buffer para dry/wet (opcional)
+            juce::AudioBuffer<float> dryBuffer;
+            dryBuffer.makeCopyOf(buffer);
+
             shape.process(buffer);
+
+            float dryWet = pDryWetDistortion ? pDryWetDistortion->load() * overallK : 1.0f;
+
+            // Mezcla dry/wet
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                float* dryData = dryBuffer.getWritePointer(ch);
+                float* wetData = buffer.getWritePointer(ch);
+
+                for (int i = 0; i < numSamples; ++i)
+                    wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
+            }
         }
     }
 
@@ -215,7 +236,6 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         fb = 0.f;
     }
 
-    // ───── Procesado de efectos secundarios ─────────────────────
     mod.setParameters(speedHz, modMix);
     delay.setTime(timeSec);
     delay.setFeedback(fb);
@@ -235,6 +255,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
             data[i] *= outGain;
     }
 }
+
 
 // Métodos restantes (Editor, estado, fábrica)
 bool StupidHouseAudioProcessor::hasEditor() const { return true; }

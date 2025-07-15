@@ -5,12 +5,15 @@ namespace IDs
     /* --- Shape / Heat / Spice / Depth ---------------------------------- */
     constexpr auto shapePreset = "shapePreset";
     constexpr auto shape = "shape";
+    constexpr auto dryWetDistortion = "dryWetDistortion";
+
     constexpr auto heatPreset = "heatPreset";
     constexpr auto heat = "heat";
     constexpr auto spicePreset = "spicePreset";
     constexpr auto spice = "spice";
     constexpr auto depthPreset = "depthPreset";
     constexpr auto depth = "depth";
+
 
     /* --- Macro ---------------------------------------------------------- */
     constexpr auto overall = "overall";      // macro de saturación

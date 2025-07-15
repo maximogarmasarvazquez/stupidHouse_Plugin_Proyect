@@ -72,6 +72,8 @@ private:
     /*─────────── Punteros a parámetro ──*/
     std::atomic<float>* pShapePreset{ nullptr };
     std::atomic<float>* pShape{ nullptr };
+    std::atomic<float>* pDryWetDistortion{ nullptr };
+
     std::atomic<float>* pSpeed{ nullptr };
     std::atomic<float>* pDryWetMod{ nullptr };
     std::atomic<float>* pTime{ nullptr };
