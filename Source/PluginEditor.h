@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 #include "IDs.h"
+#include "TestRunner.h"
 
 class StupidHouseAudioProcessorEditor : public juce::AudioProcessorEditor,
     private juce::Timer
@@ -78,8 +79,6 @@ private:
 
 private:
     void timerCallback() override;
-
-    void shapeSliderChanged();  // Método que responderá al cambio de slider al soltar
 public:
     void setDelayLight(bool isActive);
     void resetDelaySliders();

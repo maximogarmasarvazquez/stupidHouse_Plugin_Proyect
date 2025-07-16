@@ -52,8 +52,7 @@ public:
 
 private:
     std::atomic<bool> delayMuted{ false };
-    private:
-        float currentDriveAmount = 0.f;  // Guarda el valor enviado desde el editor
+     float currentDriveAmount = 0.f;  // Guarda el valor enviado desde el editor
 public:
     /*─────────── Módulos DSP ───────────*/
     DelayModule  delay;   // Feedback + dry/wet internos

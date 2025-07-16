@@ -21,8 +21,8 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     juce::StringArray depthPresetOptions{ "Default", "Shallow", "Medium", "Deep" };
 
 
-   
-   
+
+
     shapeBox.addItemList(shapePresetOptions, 1);
     heatBox.addItemList(heatPresetOptions, 1);
     spiceBox.addItemList(spicePresetOptions, 1);
@@ -65,7 +65,7 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     speedSlider.setNumDecimalPlacesToDisplay(2);
     speedSlider.setTextValueSuffix(" Hz");
     shapeSlider.setRange(0.0, 1.0);  // Rango debe coincidir con el parámetro en createParameterLayout()
-    shapeSlider.setNumDecimalPlacesToDisplay(2); 
+    shapeSlider.setNumDecimalPlacesToDisplay(2);
     shapeSlider.setTextValueSuffix("");
     // Labels
     auto label = [](juce::Label& l, juce::Slider& s, const juce::String& t)

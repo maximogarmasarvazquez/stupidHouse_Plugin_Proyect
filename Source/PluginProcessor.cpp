@@ -108,8 +108,7 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     lfo.setFrequency(0.5f);
     lfo.setWaveform(0);
     lfo.reset();
-    runAllTests(*this);
-}
+ }
 
 void StupidHouseAudioProcessor::releaseResources()
 {
@@ -261,6 +260,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
                 float* wetData = buffer.getWritePointer(ch);
                 for (int i = 0; i < buffer.getNumSamples(); ++i)
                     wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
+
             }
         }
         else
@@ -316,7 +316,9 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     {
         float* data = buffer.getWritePointer(ch);
         for (int i = 0; i < numSamples; ++i)
-            data[i] = juce::jlimit(-1.0f, 1.0f, data[i]);
+        {
+            data[i] = std::tanh(data[i] * outGain);
+        }
     }
 }
 
