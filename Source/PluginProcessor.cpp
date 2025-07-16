@@ -1,5 +1,6 @@
 ﻿#include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "TestRunner.h"
 
 // Constructor
 StupidHouseAudioProcessor::StupidHouseAudioProcessor()
@@ -37,39 +38,6 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
 StupidHouseAudioProcessor::~StupidHouseAudioProcessor()
 {
     parameters.removeParameterListener(IDs::time, this);
-}
-
-void printPerceptualLoudness(const juce::AudioBuffer<float>& buffer, const juce::String& label, float appliedGain = 0.0f)
-{
-    float rms = 0.f;
-    float peak = 0.f;
-    int numChannels = buffer.getNumChannels();
-    int numSamples = buffer.getNumSamples();
-
-    for (int ch = 0; ch < numChannels; ++ch)
-    {
-        rms += buffer.getRMSLevel(ch, 0, numSamples);
-        peak = std::max(peak, buffer.getMagnitude(ch, 0, numSamples));
-    }
-    rms /= static_cast<float>(numChannels);
-
-    // Crest factor = pico / RMS
-    float crestFactor = (rms > 0.0f) ? (peak / rms) : 0.0f;
-
-    // Loudness aproximada en dB (pseudo LUFS)
-    float loudness = 20.0f * std::log10(rms + 1e-6f); // +1e-6 para evitar log(0)
-
-    juce::String message;
-    message << label
-        << " | RMS: " << juce::String(rms, 3)
-        << " | PEAK: " << juce::String(peak, 3)
-        << " | Crest: " << juce::String(crestFactor, 2)
-        << " | Est. Loudness: " << juce::String(loudness, 2) << " dB";
-
-    if (appliedGain > 0.0f)
-        message += " | GainComp: " + juce::String(appliedGain, 3);
-
-    DBG(message);
 }
 
 // Parámetros del plugin
@@ -110,6 +78,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout StupidHouseAudioProcessor::c
 // Preparación del plugin para reproducir
 void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+
     shape.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
     delay.prepare(sampleRate, static_cast<int>(sampleRate * 2.0));
     mod.prepare(sampleRate);
@@ -139,6 +108,7 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     lfo.setFrequency(0.5f);
     lfo.setWaveform(0);
     lfo.reset();
+    runAllTests(*this);
 }
 
 void StupidHouseAudioProcessor::releaseResources()
@@ -205,6 +175,40 @@ void StupidHouseAudioProcessor::parameterChanged(const juce::String& parameterID
     }
 }
 
+//void printPerceptualLoudness(const juce::AudioBuffer<float>& buffer, const juce::String& label, float appliedGain = 0.0f)
+//{
+//    float rms = 0.f;
+//    float peak = 0.f;
+//    int numChannels = buffer.getNumChannels();
+//    int numSamples = buffer.getNumSamples();
+//
+//    for (int ch = 0; ch < numChannels; ++ch)
+//    {
+//        rms += buffer.getRMSLevel(ch, 0, numSamples);
+//        peak = std::max(peak, buffer.getMagnitude(ch, 0, numSamples));
+//    }
+//    rms /= static_cast<float>(numChannels);
+//
+//    // Crest factor = pico / RMS
+//    float crestFactor = (rms > 0.0f) ? (peak / rms) : 0.0f;
+//
+//    // Loudness aproximada en dB (pseudo LUFS)
+//    float loudness = 20.0f * std::log10(rms + 1e-6f); // +1e-6 para evitar log(0)
+//
+//    juce::String message;
+//    message << label
+//        << " | RMS: " << juce::String(rms, 3)
+//        << " | PEAK: " << juce::String(peak, 3)
+//        << " | Crest: " << juce::String(crestFactor, 2)
+//        << " | Est. Loudness: " << juce::String(loudness, 2) << " dB";
+//
+//    if (appliedGain > 0.0f)
+//        message += " | GainComp: " + juce::String(appliedGain, 3);
+//
+//    DBG(message);
+//}
+
+
 // Función para debug RMS y Peak (puede sacarse en release)
 void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
@@ -244,12 +248,12 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
                 };
 
             float rmsIn = computeAverageRMS(dryBuffer);
-            printPerceptualLoudness(dryBuffer, "ANTES DIST");
+            //printPerceptualLoudness(dryBuffer, "ANTES DIST");
 
             shape.process(buffer);
 
             float rmsOut = computeAverageRMS(buffer);
-            printPerceptualLoudness(buffer, "DESPUES DIST");
+            //printPerceptualLoudness(buffer, "DESPUES DIST");
 
             // Calculamos gainComp para compensar el aumento de volumen por la distorsión
             float gainComp = 1.0f;
@@ -287,6 +291,8 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
             float smoothGain = smoothedGainCompensation.getNextValue();
             buffer.applyGain(smoothGain);
         }
+        printPerceptualLoudness(buffer, "Salida del plugin");
+
     }
 
     // ---- Resto de procesamiento (modulación, delay, shelf, etc.) ----

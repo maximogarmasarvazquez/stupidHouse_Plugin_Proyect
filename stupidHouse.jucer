@@ -6,6 +6,8 @@
               pluginCode="SH11">
   <MAINGROUP id="VspmmG" name="stupidHouse">
     <GROUP id="{E572613D-4E41-C7D4-5B2C-9C4B81BC04E4}" name="Source">
+      <FILE id="zLYnf8" name="TestRunner.cpp" compile="1" resource="0" file="Source/TestRunner.cpp"/>
+      <FILE id="HiJOVI" name="TestRunner.h" compile="0" resource="0" file="Source/TestRunner.h"/>
       <GROUP id="{F5A0A385-7298-08FB-DDDF-9B5BECE34348}" name="Utils">
         <FILE id="CJXtjk" name="LFO.h" compile="0" resource="0" file="Source/LFO.h"/>
       </GROUP>
