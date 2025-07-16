@@ -69,7 +69,7 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     feedbackSlider.setNumDecimalPlacesToDisplay(2);
     speedSlider.setNumDecimalPlacesToDisplay(2);
     speedSlider.setTextValueSuffix(" Hz");
-    shapeSlider.setRange(0.0, 2.0);  // Rango debe coincidir con el parámetro en createParameterLayout()
+    shapeSlider.setRange(0.0, 1.0);  // Rango debe coincidir con el parámetro en createParameterLayout()
     shapeSlider.setNumDecimalPlacesToDisplay(2); 
     shapeSlider.setTextValueSuffix("");
     // Labels
