@@ -1,11 +1,10 @@
 ﻿#include "ShapeModule.h"
 #include <cmath>
 
-void ShapeModule::prepare(double sampleRate, int samplesPerBlock, int /*numChannels*/)
+void ShapeModule::prepare(double sampleRate, int /*samplesPerBlock*/, int /*numChannels*/)
 {
     smoothedAGC.reset(sampleRate, 0.05); // 50 ms
     smoothedAGC.setCurrentAndTargetValue(1.0f);
-
 
     silenceCounter = 0;
 }
@@ -16,14 +15,17 @@ void ShapeModule::setParameters(ShapePreset preset, float drive, float /*outputG
     driveAmount = drive;
     softClipEnabled = applySoftClip;
 
-    // Puedes ajustar outputGain aquí si quieres compensar volumen
-    outputGain = 1.0f;
+    // Compensación automática para mantener volumen estable
+    // Ajusta el factor 0.8 según lo que suene mejor en tu plugin
+    outputGain = 1.0f / (1.0f + driveAmount * 0.8f);
 }
 
 // Curva para distorsión sin subir ganancia brutalmente
 float ShapeModule::driveCurve(float x, float drive)
 {
-    float k = juce::jlimit(0.01f, 10.0f, drive * 5.0f);
+    // Podés cambiar a std::pow(drive, 2.0f) si querés más curvatura perceptual
+    float perceptualDrive = std::pow(drive, 1.0f);
+    float k = juce::jlimit(0.01f, 10.0f, perceptualDrive * 5.0f);
     return (1.0f - std::exp(-k * std::abs(x))) * std::copysign(1.0f, x);
 }
 
@@ -87,7 +89,7 @@ void ShapeModule::process(juce::AudioBuffer<float>& buffer)
             if (softClipEnabled)
                 data[i] = std::tanh(data[i]);
 
-            data[i] *= outputGain; // Ganancia fija (por ahora)
+            data[i] *= outputGain;
         }
     }
 }
