@@ -7,6 +7,7 @@
 #include "LFO.h"
 #include "IDs.h"
 #include "ShapeModule.h"
+#include "HeatModule.h"
 
 class StupidHouseAudioProcessor : public juce::AudioProcessor,
     public juce::AudioProcessorValueTreeState::Listener
@@ -43,7 +44,7 @@ public:
 
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
-
+    void processShapeWithCompensation(juce::AudioBuffer<float>& buffer);
     // Cargar un archivo de audio de prueba
     void loadTestFile(const juce::File& file);
 
@@ -67,8 +68,6 @@ public:
     juce::SmoothedValue<float> smoothedDryWetMod;
     juce::SmoothedValue<float> smoothedShelfDb;
     juce::SmoothedValue<float> smoothedOutput;
-
-    juce::SmoothedValue<float> smoothedGainComp;
     juce::SmoothedValue<float> smoothedGainCompensation;
 
     /*─────────── Buffer auxiliar ───────*/
@@ -77,6 +76,10 @@ public:
     /*─────────── Punteros a parámetro ──*/
     std::atomic<float>* pShapePreset{ nullptr };
     std::atomic<float>* pShape{ nullptr };
+
+    //std::atomic<float>* pHeatPreset{ nullptr };
+    //std::atomic<float>* pHeat{ nullptr };
+
     std::atomic<float>* pDryWetDistortion{ nullptr };
 
     std::atomic<float>* pSpeed{ nullptr };

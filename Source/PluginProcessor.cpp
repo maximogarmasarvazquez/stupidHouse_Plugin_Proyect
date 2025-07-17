@@ -85,18 +85,18 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     shelf.prepare(sampleRate);
     transportSource.prepareToPlay(samplesPerBlock, sampleRate);
 
-    smoothedGainCompensation.reset(sampleRate, 0.02);  // 20 ms
     smoothedGainCompensation.setCurrentAndTargetValue(1.0f);
-    smoothedGainComp.reset(sampleRate, 0.05);
-    smoothedGainComp.setCurrentAndTargetValue(1.0f);
+
 
     wetBuffer.setSize(getTotalNumOutputChannels(), samplesPerBlock, false, false, true);
 
-    smoothedOutput.reset(sampleRate, 0.002);
-    smoothedFeedback.reset(sampleRate, 0.01);
+    smoothedGainCompensation.reset(sampleRate, 0.02);  // 20 ms
+
+    smoothedOutput.reset(sampleRate, 0.005);
+    smoothedFeedback.reset(sampleRate, 0.005);
     smoothedSpeed.reset(sampleRate, 0.005);
     smoothedDryWetMod.reset(sampleRate, 0.005);
-    smoothedShelfDb.reset(sampleRate, 0.01);
+    smoothedShelfDb.reset(sampleRate, 0.005);
 
     smoothedOutput.setCurrentAndTargetValue(0.0f);
     smoothedFeedback.setCurrentAndTargetValue(0.0f);
@@ -186,6 +186,49 @@ float mapDriveValue(float input)
     return std::pow(input, exponent) * maxDrive;
 }
 
+void StupidHouseAudioProcessor::processShapeWithCompensation(juce::AudioBuffer<float>& buffer)
+{
+    juce::AudioBuffer<float> dryBuffer;
+    dryBuffer.makeCopyOf(buffer);
+
+    auto computeAverageRMS = [](const juce::AudioBuffer<float>& buf) {
+        float rms = 0.f;
+        for (int ch = 0; ch < buf.getNumChannels(); ++ch)
+            rms += buf.getRMSLevel(ch, 0, buf.getNumSamples());
+        return rms / static_cast<float>(buf.getNumChannels());
+        };
+
+    float rmsIn = computeAverageRMS(dryBuffer);
+
+    shape.process(buffer);
+
+    float rmsOut = computeAverageRMS(buffer);
+
+    float gainComp = 1.0f;
+    if (rmsOut > 0.0001f)
+        gainComp = rmsIn / rmsOut;
+
+    gainComp = juce::jlimit(0.1f, 0.7f, gainComp);
+
+    static float lastGainComp = 1.f;
+    lastGainComp = 0.5f * lastGainComp + 0.5f * gainComp;
+
+    smoothedGainCompensation.setTargetValue(lastGainComp);
+    float smoothGain = smoothedGainCompensation.getNextValue();
+
+    buffer.applyGain(smoothGain);
+
+    float dryWet = pDryWetDistortion ? juce::jlimit(0.f, 1.f, pDryWetDistortion->load()) : 1.f;
+
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+    {
+        const float* dryData = dryBuffer.getReadPointer(ch);
+        float* wetData = buffer.getWritePointer(ch);
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
+    }
+}
+
 
 // Función para debug RMS y Peak (puede sacarse en release)
 void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -194,7 +237,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     const int numSamples = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
-    // Audio playback thread safe
+    // Audio playback thread safe (no tocar)
     {
         const juce::ScopedLock sl(transportLock);
         juce::AudioSourceChannelInfo info(&buffer, 0, numSamples);
@@ -203,75 +246,30 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
     const float overallK = juce::jlimit(0.f, 1.f, pOverall ? pOverall->load() : 0.1f);
 
-    // ---- Shape Distortion with RMS compensation ----
+    // ---- Shape Distortion con compensación RMS ----
     {
         int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
-        DBG("Shape preset actual: " << shapePresetRaw);  // <---- Agregado este debug
-
         ShapePreset safePreset = static_cast<ShapePreset>(juce::jlimit(0, 4, shapePresetRaw));
 
         float shapeAmount = pShape ? juce::jlimit(0.f, 1.f, pShape->load()) : 0.f;
         float mappedDrive = mapDriveValue(shapeAmount) * overallK;
         float normalizedDrive = juce::jlimit(0.f, 1.f, mappedDrive / maxDrive);
 
+        // Configuramos parámetros del shapeModule
         shape.setParameters(safePreset, shapeAmount, 1.0f, true);
 
         if (safePreset != ShapePreset::Clean && normalizedDrive > 0.02f)
         {
-            juce::AudioBuffer<float> dryBuffer;
-            dryBuffer.makeCopyOf(buffer);
-
-            auto computeAverageRMS = [](const juce::AudioBuffer<float>& buf) {
-                float rms = 0.f;
-                for (int ch = 0; ch < buf.getNumChannels(); ++ch)
-                    rms += buf.getRMSLevel(ch, 0, buf.getNumSamples());
-                return rms / static_cast<float>(buf.getNumChannels());
-                };
-
-            float rmsIn = computeAverageRMS(dryBuffer);
-
-            shape.process(buffer);
-
-            float rmsOut = computeAverageRMS(buffer);
-
-            float gainComp = 1.0f;
-            if (rmsOut > 0.0001f)
-                gainComp = rmsIn / rmsOut;
-
-            // Limitamos gainComp para no subir volumen pero permitir bajar (evitar clipping)
-            gainComp = juce::jlimit(0.0f, 0.7f, gainComp);
-
-            // Opcional: poco o nada de suavizado para reacción más rápida
-            static float lastGainComp = 1.f;
-            lastGainComp = 0.5f * lastGainComp + 0.5f * gainComp;
-
-            smoothedGainCompensation.setTargetValue(lastGainComp);
-            float smoothGain = smoothedGainCompensation.getNextValue();
-
-            // Aplicar compensación antes de mezclar dry/wet
-            buffer.applyGain(smoothGain);
-
-            // Control Dry/Wet de la distorsión (mezcla señal limpia y distorsionada)
-            float dryWet = pDryWetDistortion ? juce::jlimit(0.f, 1.f, pDryWetDistortion->load()) : 1.f;
-
-            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-            {
-                const float* dryData = dryBuffer.getReadPointer(ch);
-                float* wetData = buffer.getWritePointer(ch);
-                for (int i = 0; i < buffer.getNumSamples(); ++i)
-                    wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
-
-            }
+            processShapeWithCompensation(buffer);
         }
         else
         {
-            // Si no hay distorsión, mantenemos la ganancia limpia
             smoothedGainCompensation.setTargetValue(1.f);
             float smoothGain = smoothedGainCompensation.getNextValue();
             buffer.applyGain(smoothGain);
         }
-        printPerceptualLoudness(buffer, "Salida del plugin");
 
+        printPerceptualLoudness(buffer, "Salida del plugin");
     }
 
     // ---- Resto de procesamiento (modulación, delay, shelf, etc.) ----
@@ -307,7 +305,7 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     shelf.process(buffer);
     mod.process(buffer);
 
-    // ---- Final output gain ----
+    // ---- Ganancia final con tanh para evitar clipping ----
     float outGain = juce::jmap(pOutputGain ? pOutputGain->load() : 0.5f, 0.f, 1.f, 0.f, 2.f);
     smoothedOutput.setTargetValue(outGain);
     outGain = smoothedOutput.getNextValue();

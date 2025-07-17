@@ -17,6 +17,8 @@
         <FILE id="OZiYwO" name="FilterModule.h" compile="0" resource="0" file="Source/FilterModule.h"/>
         <FILE id="JotVlU" name="ShapeModule.h" compile="0" resource="0" file="Source/ShapeModule.h"/>
         <FILE id="hOHG3F" name="ShapeModule.cpp" compile="1" resource="0" file="Source/ShapeModule.cpp"/>
+        <FILE id="xbZfDm" name="HeatModule.h" compile="0" resource="0" file="Source/HeatModule.h"/>
+        <FILE id="jxZYBI" name="HeatModule.cpp" compile="1" resource="0" file="Source/HeatModule.cpp"/>
       </GROUP>
       <FILE id="PvEpNY" name="IDs.h" compile="0" resource="0" file="Source/IDs.h"/>
       <FILE id="qj5KJp" name="PluginProcessor.cpp" compile="1" resource="0"

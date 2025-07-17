@@ -3,7 +3,7 @@
 
 void ShapeModule::prepare(double sampleRate, int /*samplesPerBlock*/, int /*numChannels*/)
 {
-    smoothedAGC.reset(sampleRate, 0.05); // 50 ms
+    smoothedAGC.reset(sampleRate, 0.05); // 50 ms smoothing time
     smoothedAGC.setCurrentAndTargetValue(1.0f);
 
     silenceCounter = 0;
@@ -23,8 +23,7 @@ void ShapeModule::setParameters(ShapePreset preset, float drive, float /*outputG
 // Curva para distorsión sin subir ganancia brutalmente
 float ShapeModule::driveCurve(float x, float drive)
 {
-    // Podés cambiar a std::pow(drive, 2.0f) si querés más curvatura perceptual
-    float perceptualDrive = std::pow(drive, 1.0f);
+    float perceptualDrive = std::pow(drive, 1.0f); // podés usar otro exponente para variar
     float k = juce::jlimit(0.01f, 10.0f, perceptualDrive * 5.0f);
     return (1.0f - std::exp(-k * std::abs(x))) * std::copysign(1.0f, x);
 }
