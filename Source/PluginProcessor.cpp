@@ -198,34 +198,36 @@ void StupidHouseAudioProcessor::processShapeWithCompensation(juce::AudioBuffer<f
         return rms / static_cast<float>(buf.getNumChannels());
         };
 
-    float rmsIn = computeAverageRMS(dryBuffer);
+    const float rmsIn = computeAverageRMS(dryBuffer);
 
-    shape.process(buffer);
+    shape.process(buffer); // ya no aplica gain interno
 
-    float rmsOut = computeAverageRMS(buffer);
+    const float rmsOut = computeAverageRMS(buffer);
 
+    // Calculamos compensación solo si el rmsOut no es insignificante
     float gainComp = 1.0f;
-    if (rmsOut > 0.0001f)
+    if (rmsOut > 1e-5f)
         gainComp = rmsIn / rmsOut;
 
-    gainComp = juce::jlimit(0.1f, 0.7f, gainComp);
+    // Limitar a un rango útil para evitar saltos de volumen extremos
+    gainComp = juce::jlimit(0.4f, 1.0f, gainComp);
 
-    static float lastGainComp = 1.f;
-    lastGainComp = 0.5f * lastGainComp + 0.5f * gainComp;
+    smoothedGainCompensation.setTargetValue(gainComp);
+    float smoothedGain = smoothedGainCompensation.getNextValue();
 
-    smoothedGainCompensation.setTargetValue(lastGainComp);
-    float smoothGain = smoothedGainCompensation.getNextValue();
+    buffer.applyGain(smoothedGain);
 
-    buffer.applyGain(smoothGain);
-
-    float dryWet = pDryWetDistortion ? juce::jlimit(0.f, 1.f, pDryWetDistortion->load()) : 1.f;
+    // Mezcla dry/wet
+    const float dryWet = pDryWetDistortion ? juce::jlimit(0.f, 1.f, pDryWetDistortion->load()) : 1.f;
 
     for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
     {
         const float* dryData = dryBuffer.getReadPointer(ch);
         float* wetData = buffer.getWritePointer(ch);
         for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
             wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
+        }
     }
 }
 
@@ -244,21 +246,24 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         transportSource.getNextAudioBlock(info);
     }
 
+    // overallK controla volumen general y efectos, NO el drive para evitar muteo
     const float overallK = juce::jlimit(0.f, 1.f, pOverall ? pOverall->load() : 0.1f);
 
     // ---- Shape Distortion con compensación RMS ----
     {
+
+        // Escalamos la agresividad del shape con overallK
+        float shapeAmount = pShape ? juce::jlimit(0.f, 1.f, pShape->load() * overallK) : 0.f;
+        float mappedDrive = mapDriveValue(shapeAmount);
+        float normalizedDrive = juce::jlimit(0.f, 1.f, mappedDrive / maxDrive);
+
         int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
         ShapePreset safePreset = static_cast<ShapePreset>(juce::jlimit(0, 4, shapePresetRaw));
 
-        float shapeAmount = pShape ? juce::jlimit(0.f, 1.f, pShape->load()) : 0.f;
-        float mappedDrive = mapDriveValue(shapeAmount) * overallK;
-        float normalizedDrive = juce::jlimit(0.f, 1.f, mappedDrive / maxDrive);
-
-        // Configuramos parámetros del shapeModule
+        // IMPORTANTÍSIMO: NO multiplicar drive por overallK
         shape.setParameters(safePreset, shapeAmount, 1.0f, true);
 
-        if (safePreset != ShapePreset::Clean && normalizedDrive > 0.02f)
+        if (safePreset != ShapePreset::Clean && normalizedDrive > 0.01f)
         {
             processShapeWithCompensation(buffer);
         }
@@ -273,7 +278,6 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     }
 
     // ---- Resto de procesamiento (modulación, delay, shelf, etc.) ----
-
     smoothedShelfDb.setTargetValue((pHighShelf ? pHighShelf->load() : 0.f) * overallK);
     smoothedSpeed.setTargetValue((pSpeed ? pSpeed->load() : 0.f) * overallK);
     smoothedDryWetMod.setTargetValue((pDryWetMod ? pDryWetMod->load() : 0.f) * overallK);
@@ -305,17 +309,18 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     shelf.process(buffer);
     mod.process(buffer);
 
-    // ---- Ganancia final con tanh para evitar clipping ----
     float outGain = juce::jmap(pOutputGain ? pOutputGain->load() : 0.5f, 0.f, 1.f, 0.f, 2.f);
     smoothedOutput.setTargetValue(outGain);
     outGain = smoothedOutput.getNextValue();
+
+    float finalGain = outGain;  // ya no multiplicamos por overallK
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
         float* data = buffer.getWritePointer(ch);
         for (int i = 0; i < numSamples; ++i)
         {
-            data[i] = std::tanh(data[i] * outGain);
+            data[i] = std::tanh(data[i] * finalGain);
         }
     }
 }

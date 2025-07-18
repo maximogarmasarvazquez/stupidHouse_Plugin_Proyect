@@ -5,60 +5,92 @@ void ShapeModule::prepare(double sampleRate, int /*samplesPerBlock*/, int /*numC
 {
     smoothedAGC.reset(sampleRate, 0.05); // 50 ms smoothing time
     smoothedAGC.setCurrentAndTargetValue(1.0f);
-
     silenceCounter = 0;
 }
 
 void ShapeModule::setParameters(ShapePreset preset, float drive, float /*outputGain*/, bool applySoftClip)
 {
     currentPreset = preset;
-    driveAmount = drive;
+    driveAmount = juce::jlimit(0.f, 1.f, drive);
     softClipEnabled = applySoftClip;
-
-    // Compensación automática para mantener volumen estable
-    // Ajusta el factor 0.8 según lo que suene mejor en tu plugin
-    outputGain = 1.0f / (1.0f + driveAmount * 0.8f);
 }
 
-// Curva para distorsión sin subir ganancia brutalmente
 float ShapeModule::driveCurve(float x, float drive)
 {
-    float perceptualDrive = std::pow(drive, 1.0f); // podés usar otro exponente para variar
+    float perceptualDrive = std::pow(drive, 1.0f);
     float k = juce::jlimit(0.01f, 10.0f, perceptualDrive * 5.0f);
     return (1.0f - std::exp(-k * std::abs(x))) * std::copysign(1.0f, x);
 }
 
 float ShapeModule::saturateSoft(float x)
 {
-    return driveCurve(x, driveAmount);
+    float k = driveAmount * 6.0f + 0.1f;        // Más ganancia para hacerlo sentir más
+    float shaped = std::tanh(k * x);            // Saturación suave
+    return shaped * (0.9f - 0.2f * driveAmount); // Controla el nivel final
 }
 
 float ShapeModule::saturateHard(float x)
 {
-    float clean = driveCurve(x, driveAmount);
-    if (clean > 0.7f) return 0.7f;
-    if (clean < -0.7f) return -0.7f;
-    return clean;
+    float gain = 1.0f + driveAmount * 4.0f;
+    float driven = gain * x;
+
+    // Clip más permisivo: más rango, más redondeado
+    float clipped = juce::jlimit(-0.9f, 0.9f, driven);
+
+    // Suavizado en los bordes
+    if (clipped > 0.75f)
+        clipped = 0.75f + 0.25f * std::tanh((clipped - 0.75f) * 5.0f);
+    else if (clipped < -0.75f)
+        clipped = -0.75f + 0.25f * std::tanh((clipped + 0.75f) * 5.0f);
+
+    return clipped;
 }
+
 
 float ShapeModule::saturateTape(float x)
 {
-    float clean = driveCurve(x, driveAmount);
-    if (clean > 0.0f)
-        return 1.0f - std::exp(-clean);
-    else
-        return -1.0f + std::exp(clean);
+    float gain = 1.0f + driveAmount * 3.5f;
+    float bias = 0.08f * driveAmount;              // Leve desalineación
+    float driven = gain * x + bias;
+
+    // Curva de saturación con compresión dinámica tipo cinta
+    float compressed = driven / (1.0f + 0.6f * std::abs(driven));
+    float softened = std::tanh(compressed * 0.9f);
+
+    // Crossfade más fuerte
+    float mix = 0.4f + 0.5f * driveAmount;
+
+    return (1.0f - mix) * x + mix * softened;
 }
 
 float ShapeModule::saturateFoldback(float x)
 {
-    const float threshold = 0.5f;
-    float clean = driveCurve(x, driveAmount);
-    if (clean > threshold || clean < -threshold)
+    float gain = 1.0f + driveAmount * 4.0f;
+    float shaped = gain * x;
+    const float threshold = 1.0f;
+
+    if (std::abs(shaped) > threshold)
     {
-        return std::fabs(std::fmod(std::fabs(clean - threshold), threshold * 4.f) - threshold * 2.f) - threshold;
+        // Foldback clásico: reflejo del exceso, pero suavizado con seno para transiciones suaves
+        float excess = std::fabs(shaped) - threshold;
+
+        // Foldback con función seno para suavizar (más orgánico)
+        float foldValue = threshold - std::sin(excess * (juce::MathConstants<float>::pi * 0.5f));
+
+        shaped = (shaped > 0) ? foldValue : -foldValue;
+
+        // Aplicamos saturación suave extra para suavizar picos
+        shaped = std::tanh(shaped * 2.0f);
     }
-    return clean;
+    else
+    {
+        // Saturación leve para señal dentro de rango
+        shaped = std::tanh(shaped * 1.3f);
+    }
+
+    // Mezcla señal limpia y foldback según driveAmount
+    float mix = juce::jlimit(0.f, 1.f, driveAmount);
+    return (1.0f - mix) * x + mix * shaped;
 }
 
 void ShapeModule::process(juce::AudioBuffer<float>& buffer)
@@ -75,20 +107,21 @@ void ShapeModule::process(juce::AudioBuffer<float>& buffer)
         for (int i = 0; i < numSamples; ++i)
         {
             float x = data[i];
+            float y = 0.0f;
 
             switch (currentPreset)
             {
-            case ShapePreset::Soft:      data[i] = saturateSoft(x); break;
-            case ShapePreset::Hard:      data[i] = saturateHard(x); break;
-            case ShapePreset::Tape:      data[i] = saturateTape(x); break;
-            case ShapePreset::Foldback:  data[i] = saturateFoldback(x); break;
-            default: break;
+            case ShapePreset::Soft:     y = saturateSoft(x); break;
+            case ShapePreset::Hard:     y = saturateHard(x); break;
+            case ShapePreset::Tape:     y = saturateTape(x); break;
+            case ShapePreset::Foldback: y = saturateFoldback(x); break;
+            default:                   y = x; break;
             }
 
             if (softClipEnabled)
-                data[i] = std::tanh(data[i]);
+                y = std::tanh(y);
 
-            data[i] *= outputGain;
+            data[i] = y * outputGain;
         }
     }
 }
