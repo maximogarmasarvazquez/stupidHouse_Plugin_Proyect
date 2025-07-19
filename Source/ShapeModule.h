@@ -17,9 +17,12 @@ public:
     ShapeModule() = default;
 
     void prepare(double sampleRate, int samplesPerBlock, int numChannels);
+    void setParameters(ShapePreset preset, float drive, float outGain, bool applySoftClip);
+    void updateParametersFromPreset(int rawPreset, float drive, bool applySoftClip = true); // <-- parámetro opcional aquí
     void process(juce::AudioBuffer<float>& buffer);
-    void setParameters(ShapePreset preset, float drive, float outputGain, bool applySoftClip);
+    void processWithCompensation(juce::AudioBuffer<float>& buffer, float dryWet, juce::SmoothedValue<float>& gainSmoother);
 
+    static float mapDriveValue(float input);
     float getPresetGainCompensation() const;
 
 private:
@@ -37,7 +40,6 @@ private:
     float saturateHard(float x);
     float saturateTape(float x);
     float saturateFoldback(float x);
-    float driveCurve(float x, float drive);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ShapeModule)
 };

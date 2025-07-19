@@ -5,7 +5,6 @@ namespace IDs
     /* --- Shape / Heat / Spice / Depth ---------------------------------- */
     constexpr auto shapePreset = "shapePreset";
     constexpr auto shape = "shape";
-    constexpr auto dryWetDistortion = "dryWetDistortion";
 
     constexpr auto heatPreset = "heatPreset";
     constexpr auto heat = "heat";

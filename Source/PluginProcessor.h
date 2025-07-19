@@ -44,7 +44,6 @@ public:
 
     void getStateInformation(juce::MemoryBlock&) override;
     void setStateInformation(const void*, int) override;
-    void processShapeWithCompensation(juce::AudioBuffer<float>& buffer);
     // Cargar un archivo de audio de prueba
     void loadTestFile(const juce::File& file);
 
@@ -80,7 +79,6 @@ public:
     //std::atomic<float>* pHeatPreset{ nullptr };
     //std::atomic<float>* pHeat{ nullptr };
 
-    std::atomic<float>* pDryWetDistortion{ nullptr };
 
     std::atomic<float>* pSpeed{ nullptr };
     std::atomic<float>* pDryWetMod{ nullptr };

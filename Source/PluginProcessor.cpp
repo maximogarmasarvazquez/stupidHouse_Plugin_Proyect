@@ -1,7 +1,7 @@
 ﻿#include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "TestRunner.h"
-
+#include "ShapeModule.h"
 // Constructor
 StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     : AudioProcessor(BusesProperties()
@@ -62,7 +62,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout StupidHouseAudioProcessor::c
 
     params.push_back(std::make_unique<APF>(IDs::overall, "Overall Amount", 0.f, 1.f, 0.5f));
     params.push_back(std::make_unique<APF>(IDs::outputGain, "Output Gain", 0.f, 1.f, 0.5f));
-    params.push_back(std::make_unique<APF>(IDs::dryWetDistortion, "Dry/Wet Distortion", 0.f, 1.f, 1.f));
 
     params.push_back(std::make_unique<APF>(IDs::time, "Delay Time", 0.f, 10.f, 0.f));
     params.push_back(std::make_unique<APF>(IDs::feedback, "Feedback", 0.f, 1.f, 0.f));
@@ -168,60 +167,7 @@ void StupidHouseAudioProcessor::parameterChanged(const juce::String& parameterID
     }
 }
 
-float mapDriveValue(float input)
-{
-    constexpr float maxDrive = 3.5f;
-    float exponent = 2.0f;
-    return std::pow(input, exponent) * maxDrive;
-}
 
-void StupidHouseAudioProcessor::processShapeWithCompensation(juce::AudioBuffer<float>& buffer)
-{
-    juce::AudioBuffer<float> dryBuffer;
-    dryBuffer.makeCopyOf(buffer);
-
-    auto computeAverageRMS = [](const juce::AudioBuffer<float>& buf) {
-        float rms = 0.f;
-        for (int ch = 0; ch < buf.getNumChannels(); ++ch)
-            rms += buf.getRMSLevel(ch, 0, buf.getNumSamples());
-        return rms / static_cast<float>(buf.getNumChannels());
-        };
-
-    const float rmsIn = computeAverageRMS(dryBuffer);
-
-    shape.process(buffer); // aplica saturación/distorsión
-
-    const float rmsOut = computeAverageRMS(buffer);
-
-    // Mejor compensación: calculamos la ganancia compensatoria suavizada,
-    // limitada, y además evitamos valores extremos para evitar artefactos.
-    float gainComp = 1.0f;
-    if (rmsOut > 1e-8f)
-        gainComp = rmsIn / rmsOut;
-
-    // Limitamos entre 0.6 y 1.0 para evitar ganancias muy bajas que "apaguen" la señal
-    gainComp = juce::jlimit(1.f, 1.5f, gainComp);
-
-    smoothedGainCompensation.setTargetValue(gainComp);
-    float smoothedGain = smoothedGainCompensation.getNextValue();
-
-    buffer.applyGain(smoothedGain);
-
-    lastAppliedGain = smoothedGain; // guardamos ganancia aplicada
-
-    // Mezcla dry/wet
-    const float dryWet = pDryWetDistortion ? juce::jlimit(0.f, 1.f, pDryWetDistortion->load()) : 1.f;
-
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-    {
-        const float* dryData = dryBuffer.getReadPointer(ch);
-        float* wetData = buffer.getWritePointer(ch);
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-        {
-            wetData[i] = dryData[i] * (1.0f - dryWet) + wetData[i] * dryWet;
-        }
-    }
-}
 
 void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
@@ -240,19 +186,20 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
     // Shape Distortion con compensación
     {
-        float shapeAmount = pShape ? juce::jlimit(0.f, 1.f, pShape->load() * overallK) : 0.f;
-        float mappedDrive = mapDriveValue(shapeAmount);
+        // Limito el shapeAmount a 0.5 como máximo
+        float shapeAmount = pShape ? juce::jlimit(0.f, 0.5f, pShape->load() * overallK) : 0.f;
+
+        float mappedDrive = ShapeModule::mapDriveValue(shapeAmount);
         float normalizedDrive = juce::jlimit(0.f, 1.f, mappedDrive / maxDrive);
 
         int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
-        ShapePreset safePreset = static_cast<ShapePreset>(juce::jlimit(0, 4, shapePresetRaw));
+        shape.updateParametersFromPreset(shapePresetRaw, shapeAmount);
 
-        // Configuramos shape con amount, sin afectar drive por overallK
-        shape.setParameters(safePreset, shapeAmount, 1.0f, true);
-
-        if (safePreset != ShapePreset::Clean && normalizedDrive > 0.01f)
+        if (shapePresetRaw != static_cast<int>(ShapePreset::Clean) && normalizedDrive > 0.01f)
         {
-            processShapeWithCompensation(buffer);
+            shape.processWithCompensation(buffer, shapeAmount, smoothedGainCompensation);
+
+            lastAppliedGain = smoothedGainCompensation.getCurrentValue();
             DBG("Gain Applied (smoothed): " << lastAppliedGain);
             printPerceptualLoudness(buffer, "Salida del plugin", lastAppliedGain);
         }
@@ -300,18 +247,29 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     shelf.process(buffer);
     mod.process(buffer);
 
+    // Obtener la ganancia aplicada por ShapeModule
+    float shapeGain = lastAppliedGain;
+
+    // Obtener la ganancia general de salida
     float outGain = juce::jmap(pOutputGain ? pOutputGain->load() : 0.5f, 0.f, 1.f, 0.f, 2.f);
     smoothedOutput.setTargetValue(outGain);
     outGain = smoothedOutput.getNextValue();
 
-    float finalGain = outGain;  // no multiplicamos por overallK aquí
+    // Multiplicar ambas ganancias
+    float combinedGain = shapeGain * outGain;
+    int shapePresetRaw = static_cast<int>(*parameters.getRawParameterValue(IDs::shapePreset));
+    // Limitar la ganancia combinada para evitar clipping extremo
+    const float maxCombinedGain = (shapePresetRaw == static_cast<int>(ShapePreset::Tape)) ? 1.7f : 1.5f;
+    combinedGain = juce::jlimit(0.f, maxCombinedGain, combinedGain);
+    DBG("Combined Gain after limit: " << combinedGain);
 
+    // Aplicar ganancia combinada limitada a la señal con limitador suave tanh
     for (int ch = 0; ch < numChannels; ++ch)
     {
         float* data = buffer.getWritePointer(ch);
         for (int i = 0; i < numSamples; ++i)
         {
-            data[i] = std::tanh(data[i] * finalGain);
+            data[i] = std::tanh(data[i] * combinedGain);
         }
     }
 }
