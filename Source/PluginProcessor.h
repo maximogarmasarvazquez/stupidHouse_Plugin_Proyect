@@ -50,8 +50,8 @@ public:
 
     // ValueTree con todos los parámetros
     juce::AudioProcessorValueTreeState parameters;
-
 private:
+    float lastAppliedGain = 1.0f;
     std::atomic<bool> delayMuted{ false };
      float currentDriveAmount = 0.f;  // Guarda el valor enviado desde el editor
 public:
