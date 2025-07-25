@@ -16,7 +16,7 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     // Presets
 
     juce::StringArray shapePresetOptions{ "Default", "Soft", "Hard", "Tape", "Foldback" };
-    juce::StringArray heatPresetOptions{ "Default", "Mild", "Medium", "Extreme" };
+    juce::StringArray heatPresetOptions{ "Clean", "Warm", "Analog", "Dirty", "Crunch" };
     juce::StringArray spicePresetOptions{ "Default", "Low", "Medium", "High" };
     juce::StringArray depthPresetOptions{ "Default", "Shallow", "Medium", "Deep" };
 
@@ -89,12 +89,13 @@ StupidHouseAudioProcessorEditor::StupidHouseAudioProcessorEditor(StupidHouseAudi
     // Attachments
     shapePresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::shapePreset, shapeBox);
     heatPresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::heatPreset, heatBox);
+   
     spicePresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::spicePreset, spiceBox);
     depthPresetAttach = std::make_unique<ChoiceAttachment>(audioProcessor.parameters, IDs::depthPreset, depthBox);
 
     shapeAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::shape, shapeSlider);
-
     heatAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::heat, heatSlider);
+
     spiceAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::spice, spiceSlider);
     depthAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::depth, depthSlider);
     overallAttach = std::make_unique<SliderAttachment>(audioProcessor.parameters, IDs::overall, overallSlider);

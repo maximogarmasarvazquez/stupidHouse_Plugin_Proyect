@@ -8,6 +8,7 @@ namespace IDs
 
     constexpr auto heatPreset = "heatPreset";
     constexpr auto heat = "heat";
+
     constexpr auto spicePreset = "spicePreset";
     constexpr auto spice = "spice";
     constexpr auto depthPreset = "depthPreset";

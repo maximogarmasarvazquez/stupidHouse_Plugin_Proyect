@@ -60,7 +60,7 @@ public:
     FilterModule shelf;
     LFO          lfo;
     ShapeModule  shape;
-
+    HeatModule heat;
     /*─────────── Smoothed values ───────*/
     juce::SmoothedValue<float> smoothedFeedback;
     juce::SmoothedValue<float> smoothedSpeed;
@@ -76,8 +76,8 @@ public:
     std::atomic<float>* pShapePreset{ nullptr };
     std::atomic<float>* pShape{ nullptr };
 
-    //std::atomic<float>* pHeatPreset{ nullptr };
-    //std::atomic<float>* pHeat{ nullptr };
+    std::atomic<float>* pHeatPreset{ nullptr };
+    std::atomic<float>* pHeat{ nullptr };
 
 
     std::atomic<float>* pSpeed{ nullptr };

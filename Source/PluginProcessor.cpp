@@ -17,6 +17,11 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     formatManager.registerBasicFormats();
 
     pShapePreset = parameters.getRawParameterValue(IDs::shapePreset);
+    pHeatPreset = parameters.getRawParameterValue(IDs::heatPreset);
+
+    pHeat = parameters.getRawParameterValue(IDs::heat);
+    pShape = parameters.getRawParameterValue(IDs::shape);
+
     pSpeed = parameters.getRawParameterValue(IDs::speed);
     pDryWetMod = parameters.getRawParameterValue(IDs::dryWetMod);
     pTime = parameters.getRawParameterValue(IDs::time);
@@ -25,12 +30,11 @@ StupidHouseAudioProcessor::StupidHouseAudioProcessor()
     pHighShelf = parameters.getRawParameterValue(IDs::highShelf);
     pOverall = parameters.getRawParameterValue(IDs::overall);
     pOutputGain = parameters.getRawParameterValue(IDs::outputGain);
-    pShape = parameters.getRawParameterValue(IDs::shape);
 
     parameters.addParameterListener(IDs::time, this);
 
     jassert(pShape && pShapePreset && pSpeed && pDryWetMod && pTime &&
-        pFeedback && pDryWetDelay && pHighShelf && pOverall && pOutputGain);
+        pFeedback && pDryWetDelay && pHighShelf && pOverall && pOutputGain && pHeat && pHeatPreset);
 }
 
 // Destructor
@@ -50,9 +54,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout StupidHouseAudioProcessor::c
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::shapePreset, "Shape Preset",
         StringArray{ "Default", "Soft", "Hard", "Tape", "Foldback" }, 0));
     params.push_back(std::make_unique<APF>(IDs::shape, "Shape Amount", 0.f, 1.f, 0.f));
+
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::heatPreset, "Heat Preset",
-        StringArray{ "Default", "Mild", "Medium", "Extreme" }, 0));
+        StringArray{ "Clean", "Warm", "Analog", "Dirty", "Crunch" }, 0));
     params.push_back(std::make_unique<APF>(IDs::heat, "Heat Amount", 0.f, 1.f, 0.f));
+
     params.push_back(std::make_unique<AudioParameterChoice>(IDs::spicePreset, "Spice Preset",
         StringArray{ "Default", "Low", "Medium", "High" }, 0));
     params.push_back(std::make_unique<APF>(IDs::spice, "Spice Amount", 0.f, 1.f, 0.f));
@@ -81,6 +87,7 @@ void StupidHouseAudioProcessor::prepareToPlay(double sampleRate, int samplesPerB
     mod.prepare(sampleRate);
     shelf.prepare(sampleRate);
     transportSource.prepareToPlay(samplesPerBlock, sampleRate);
+    heat.prepare(sampleRate, samplesPerBlock, getTotalNumOutputChannels());
 
     smoothedGainCompensation.reset(sampleRate, 0.05);  // suavizado más lento, 50 ms
     smoothedGainCompensation.setCurrentAndTargetValue(1.0f);
@@ -217,6 +224,18 @@ void StupidHouseAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
     float inputRMSAfter = buffer.getRMSLevel(0, 0, numSamples);
     DBG("RMS después del Shape: " << inputRMSAfter);
+
+    // === HEAT == 
+
+    float heatAmount = pHeat ? juce::jlimit(0.f, 1.f, pHeat->load() * overallK) : 0.f;
+    int heatPreset = static_cast<int>(*parameters.getRawParameterValue(IDs::heatPreset));
+
+    if (heatPreset != static_cast<int>(HeatPreset::Clean) && heatAmount > 0.001f)
+    {
+        heat.updateParametersFromPreset(heatPreset, heatAmount);
+        heat.process(buffer, heatAmount);
+    }
+
 
     // === RESTO DEL PROCESAMIENTO ===
 

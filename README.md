@@ -25,9 +25,9 @@ git clone https://github.com/maximogarmasarvazquez/stupidHouse_Plugin_Proyect
 5. Compila y ejecuta el plugin.
 
 
-## 📚 Documentacion util
+## 📚 Documentacion 
 - [Documentacion del proyecto](https://docs.google.com/document/d/1TUbwLw3lji4iyLa2XsI2AJycfe4rYzAFlDEvP2KMf5E/edit?usp=sharing)
-## 📚 Documentacion util
+
 - [Documentacion del proyecto TEST](https://docs.google.com/document/d/1qthi16Ts65kYF4Ra38g74k0Hw8YbeECi-CtkgeRcjM4/edit?usp=sharing)
 
 ---
